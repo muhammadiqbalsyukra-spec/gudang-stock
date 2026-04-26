@@ -5,34 +5,30 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Smart Toko</title>
 
-<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
 <style>
-body {
-  font-family: Arial;
-  padding: 20px;
-}
-input, button {
-  padding: 8px;
-  margin: 5px;
-}
-.card {
-  border: 1px solid #ccc;
-  padding: 10px;
-  margin: 5px;
-}
+body { font-family: Arial; padding: 20px; }
+input, select, button { padding: 8px; margin: 5px; }
+.card { border:1px solid #ccc; padding:10px; margin:5px; }
 </style>
 </head>
 
 <body>
 
 <h2>📦 Input Barang</h2>
+<input type="text" id="kode" placeholder="Kode Barang">
 <input type="text" id="nama" placeholder="Nama Barang">
 <input type="number" id="harga" placeholder="Harga">
-<input type="number" id="stok" placeholder="Stok">
-<button onclick="tambahBarang()">Tambah</button>
+<input type="number" id="jumlah" placeholder="Jumlah">
+<select id="satuan">
+  <option value="pcs">PCS</option>
+  <option value="crt">CRT</option>
+</select>
+
+<button onclick="tambahAtauUpdate()">Simpan</button>
+<button onclick="keluarBarang()">Barang Keluar</button>
 
 <hr>
 
@@ -48,35 +44,114 @@ const firebaseConfig = {
   messagingSenderId: "1083922080078",
   appId: "1:1083922080078:web:59a37f73bf8ec33ffd7e1f"
 };
+
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
 
-// ➕ TAMBAH BARANG
-function tambahBarang() {
+// 🔍 AUTO ISI BERDASARKAN KODE
+document.getElementById("kode").addEventListener("keyup", async function() {
+  const kode = this.value;
+
+  if (!kode) return;
+
+  const doc = await db.collection("barang").doc(kode).get();
+
+  if (doc.exists) {
+    const data = doc.data();
+    document.getElementById("nama").value = data.nama_barang;
+    document.getElementById("harga").value = data.harga;
+  }
+});
+
+
+// ➕ TAMBAH / UPDATE BARANG
+async function tambahAtauUpdate() {
+  const kode = document.getElementById("kode").value;
   const nama = document.getElementById("nama").value;
   const harga = parseInt(document.getElementById("harga").value);
-  const stok = parseInt(document.getElementById("stok").value);
+  const jumlah = parseInt(document.getElementById("jumlah").value);
+  const satuan = document.getElementById("satuan").value;
 
-  if (!nama) {
-    alert("Nama barang wajib diisi!");
+  if (!kode || !nama) {
+    alert("Kode & Nama wajib!");
     return;
   }
 
-  db.collection("barang").add({
-    nama_barang: nama,
-    harga: harga || 0,
-    stok: stok || 0,
-    konversi: 1
-  });
+  let tambahStok = jumlah;
 
-  document.getElementById("nama").value = "";
-  document.getElementById("harga").value = "";
-  document.getElementById("stok").value = "";
+  if (satuan === "crt") {
+    tambahStok = jumlah * 24; // 1 CRT = 24 PCS
+  }
+
+  const ref = db.collection("barang").doc(kode);
+  const doc = await ref.get();
+
+  if (doc.exists) {
+    const stokLama = doc.data().stok || 0;
+    await ref.update({
+      stok: stokLama + tambahStok
+    });
+  } else {
+    await ref.set({
+      nama_barang: nama,
+      harga: harga || 0,
+      stok: tambahStok,
+      konversi: 24
+    });
+  }
+
+  resetForm();
 }
 
 
-// 🔄 TAMPILKAN DATA REALTIME
+// ➖ BARANG KELUAR
+async function keluarBarang() {
+  const kode = document.getElementById("kode").value;
+  const jumlah = parseInt(document.getElementById("jumlah").value);
+  const satuan = document.getElementById("satuan").value;
+
+  if (!kode || !jumlah) {
+    alert("Isi kode & jumlah!");
+    return;
+  }
+
+  let kurang = jumlah;
+
+  if (satuan === "crt") {
+    kurang = jumlah * 24;
+  }
+
+  const ref = db.collection("barang").doc(kode);
+  const doc = await ref.get();
+
+  if (!doc.exists) {
+    alert("Barang tidak ditemukan!");
+    return;
+  }
+
+  const stok = doc.data().stok || 0;
+
+  if (stok < kurang) {
+    alert("Stok tidak cukup!");
+    return;
+  }
+
+  await ref.update({
+    stok: stok - kurang
+  });
+
+  resetForm();
+}
+
+
+// 🗑️ HAPUS DATA KOSONG
+async function hapusKosong(id) {
+  await db.collection("barang").doc(id).delete();
+}
+
+
+// 🔄 TAMPILKAN DATA
 const listBarang = document.getElementById("listBarang");
 
 db.collection("barang").onSnapshot((snapshot) => {
@@ -88,12 +163,23 @@ db.collection("barang").onSnapshot((snapshot) => {
     listBarang.innerHTML += `
       <div class="card">
         <b>${data.nama_barang}</b><br>
+        Kode: ${doc.id}<br>
         Harga: ${data.harga}<br>
-        Stok: ${data.stok}
+        Stok: ${data.stok}<br>
+        <button onclick="hapusKosong('${doc.id}')">Hapus</button>
       </div>
     `;
   });
 });
+
+
+// 🔄 RESET FORM
+function resetForm() {
+  document.getElementById("kode").value = "";
+  document.getElementById("nama").value = "";
+  document.getElementById("harga").value = "";
+  document.getElementById("jumlah").value = "";
+}
 </script>
 
 </body>
