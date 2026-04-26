@@ -7,28 +7,17 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-
-<!-- PDF -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <style>
 body { font-family: Arial; padding:20px; }
 
-input, select, button {
-  padding:8px;
-  margin:5px;
-}
+input, select, button { padding:8px; margin:5px; }
 
-/* tabel */
 table {
   border-collapse: collapse;
   width:100%;
   margin-top:10px;
-  font-size:14px;
-}
-
-th {
-  background:#f5f5f5;
 }
 
 th, td {
@@ -36,39 +25,11 @@ th, td {
   padding:8px;
 }
 
+th { background:#f5f5f5; }
+
 tr:nth-child(even){ background:#fafafa; }
-tr:hover{ background:#f1f1f1; }
 
 .hidden { display:none; }
-
-/* dropdown */
-.menu {
-  position: relative;
-}
-.menu-btn {
-  border:none;
-  background:transparent;
-  cursor:pointer;
-}
-.menu-content {
-  display:none;
-  position:absolute;
-  right:0;
-  background:white;
-  border:1px solid #ddd;
-}
-.menu:hover .menu-content {
-  display:block;
-}
-.menu-content button {
-  border:none;
-  background:none;
-  padding:8px;
-  cursor:pointer;
-}
-.menu-content button:hover {
-  background:#eee;
-}
 </style>
 </head>
 
@@ -77,8 +38,8 @@ tr:hover{ background:#f1f1f1; }
 <!-- LOGIN -->
 <div id="loginPage">
   <h2>🔐 Login</h2>
-  <input type="text" id="user" placeholder="Username"><br>
-  <input type="password" id="pass" placeholder="Password"><br>
+  <input id="user" placeholder="Username"><br>
+  <input id="pass" type="password" placeholder="Password"><br>
   <button onclick="login()">Login</button>
 </div>
 
@@ -92,8 +53,8 @@ tr:hover{ background:#f1f1f1; }
 <input id="jumlah" type="number" placeholder="Jumlah">
 
 <select id="satuan">
-  <option value="pcs">PCS</option>
-  <option value="crt">CRT</option>
+<option value="pcs">PCS</option>
+<option value="crt">CRT</option>
 </select>
 
 <button onclick="tambah()">Masuk</button>
@@ -104,19 +65,24 @@ tr:hover{ background:#f1f1f1; }
 <h2>📋 Stok Barang</h2>
 
 <input id="search" placeholder="🔍 Cari..." onkeyup="renderData()">
+
+<br>
+
 <button onclick="printStok()">🖨️ Print</button>
 <button onclick="exportPDF()">📄 PDF</button>
+<button onclick="hapusTerpilih()">🗑️ Hapus Pilihan</button>
+<button onclick="laporanHarian()">📊 Laporan Harian</button>
 
 <div id="areaPrint">
 <table id="tabel">
 <thead>
 <tr>
+<th></th>
 <th>No</th>
 <th>Kode</th>
 <th>Nama</th>
 <th>Stok</th>
 <th>Harga</th>
-<th></th>
 </tr>
 </thead>
 
@@ -138,7 +104,7 @@ tr:hover{ background:#f1f1f1; }
 <script>
 // LOGIN
 function login(){
-  if(val("user")=="admin" && val("pass")=="1234"){
+  if(user.value=="admin" && pass.value=="1234"){
     loginPage.classList.add("hidden");
     appPage.classList.remove("hidden");
   } else alert("Salah");
@@ -156,23 +122,21 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
 // FORMAT
-function formatRupiah(a){
-  return "Rp "+a.toLocaleString("id-ID");
-}
+function rupiah(a){ return "Rp "+a.toLocaleString("id-ID"); }
 
 // AUTO ISI
-kode.onkeyup = async ()=>{
-  let doc = await db.collection("barang").doc(kodeVal()).get();
+kode.onkeyup=async()=>{
+  let doc=await db.collection("barang").doc(kodeVal()).get();
   if(doc.exists){
-    nama.value = doc.data().nama_barang;
-    harga.value = doc.data().harga;
+    nama.value=doc.data().nama_barang;
+    harga.value=doc.data().harga;
   }
 };
 
 // MASUK
 async function tambah(){
-  let k=kodeVal(), n=val("nama"), h=num("harga"), j=num("jumlah");
-  let t = (val("satuan")=="crt")? j*24 : j;
+  let k=kodeVal(), n=nama.value, h=+harga.value, j=+jumlah.value;
+  let t=(satuan.value=="crt")?j*24:j;
 
   let ref=db.collection("barang").doc(k);
   let doc=await ref.get();
@@ -182,13 +146,12 @@ async function tambah(){
   } else {
     await ref.set({nama_barang:n,harga:h,stok:t});
   }
-  reset();
 }
 
 // KELUAR
 async function keluar(){
-  let k=kodeVal(), j=num("jumlah");
-  let t=(val("satuan")=="crt")? j*24:j;
+  let k=kodeVal(), j=+jumlah.value;
+  let t=(satuan.value=="crt")?j*24:j;
 
   let ref=db.collection("barang").doc(k);
   let doc=await ref.get();
@@ -198,12 +161,6 @@ async function keluar(){
   if(s<t) return alert("Kurang");
 
   await ref.update({stok:s-t});
-  reset();
-}
-
-// HAPUS
-function hapus(id){
-  db.collection("barang").doc(id).delete();
 }
 
 // DATA
@@ -217,7 +174,7 @@ db.collection("barang").onSnapshot(snap=>{
 // RENDER
 function renderData(){
   list.innerHTML="";
-  let key=val("search").toLowerCase();
+  let key=search.value.toLowerCase();
   let total=0, no=1;
 
   semuaData.forEach(d=>{
@@ -226,33 +183,31 @@ function renderData(){
       let crt=Math.floor(d.stok/24);
       let pcs=d.stok%24;
 
-      let stok="";
-      if(crt>0&&pcs>0) stok=`${crt} crt + ${pcs} pcs`;
-      else if(crt>0) stok=`${crt} crt`;
-      else stok=`${pcs} pcs`;
+      let stok = crt>0 ? (pcs>0 ? `${crt} crt + ${pcs} pcs` : `${crt} crt`) : `${pcs} pcs`;
 
       total+=d.stok*d.harga;
 
       list.innerHTML+=`
       <tr>
+        <td><input type="checkbox" value="${d.id}"></td>
         <td>${no++}</td>
         <td>${d.id}</td>
         <td>${d.nama_barang}</td>
         <td>${stok}</td>
-        <td>${formatRupiah(d.harga)}</td>
-        <td>
-          <div class="menu">
-            <button class="menu-btn">⋮</button>
-            <div class="menu-content">
-              <button onclick="hapus('${d.id}')">Hapus</button>
-            </div>
-          </div>
-        </td>
+        <td>${rupiah(d.harga)}</td>
       </tr>`;
     }
   });
 
-  totalHarga.innerHTML=formatRupiah(total);
+  totalHarga.innerHTML=rupiah(total);
+}
+
+// HAPUS PILIHAN
+function hapusTerpilih(){
+  let cek=document.querySelectorAll("input[type=checkbox]:checked");
+  cek.forEach(c=>{
+    db.collection("barang").doc(c.value).delete();
+  });
 }
 
 // PRINT
@@ -264,14 +219,17 @@ function printStok(){
 
 // PDF
 function exportPDF(){
-  html2pdf().from(areaPrint).save("stok-barang.pdf");
+  html2pdf().from(areaPrint).save("stok.pdf");
+}
+
+// LAPORAN HARIAN
+function laporanHarian(){
+  let hari = new Date().toLocaleDateString("id-ID");
+  alert("Laporan Hari Ini: "+hari+"\\nTotal Stok: "+totalHarga.innerText);
 }
 
 // HELPER
-function val(id){return document.getElementById(id).value}
-function num(id){return parseInt(val(id))||0}
-function kodeVal(){return val("kode").trim()}
-function reset(){["kode","nama","harga","jumlah"].forEach(i=>document.getElementById(i).value="")}
+function kodeVal(){ return kode.value.trim(); }
 </script>
 
 </body>
