@@ -7,7 +7,6 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <style>
 body { font-family: Arial; padding:20px; }
@@ -68,9 +67,9 @@ tr:nth-child(even){ background:#fafafa; }
 
 <br>
 
-<button onclick="printStok()">🖨️ Print</button>
-<button onclick="exportPDF()">📄 PDF</button>
-<button onclick="hapusTerpilih()">🗑️ Hapus Pilihan</button>
+<button onclick="printStok()">🖨️ Print / PDF</button>
+<button onclick="toggleHapus()">🗑️ Mode Hapus</button>
+<button onclick="hapusTerpilih()" id="btnHapus" style="display:none;">✔ Hapus Dipilih</button>
 <button onclick="laporanHarian()">📊 Laporan Harian</button>
 
 <div id="areaPrint">
@@ -124,6 +123,15 @@ const db = firebase.firestore();
 // FORMAT
 function rupiah(a){ return "Rp "+a.toLocaleString("id-ID"); }
 
+// MODE HAPUS
+let modeHapus = false;
+
+function toggleHapus(){
+  modeHapus = !modeHapus;
+  btnHapus.style.display = modeHapus ? "inline-block" : "none";
+  renderData();
+}
+
 // AUTO ISI
 kode.onkeyup=async()=>{
   let doc=await db.collection("barang").doc(kodeVal()).get();
@@ -146,6 +154,12 @@ async function tambah(){
   } else {
     await ref.set({nama_barang:n,harga:h,stok:t});
   }
+
+  await db.collection("transaksi").add({
+    tipe:"masuk",
+    jumlah:t,
+    tanggal:new Date()
+  });
 }
 
 // KELUAR
@@ -161,6 +175,12 @@ async function keluar(){
   if(s<t) return alert("Kurang");
 
   await ref.update({stok:s-t});
+
+  await db.collection("transaksi").add({
+    tipe:"keluar",
+    jumlah:t,
+    tanggal:new Date()
+  });
 }
 
 // DATA
@@ -189,7 +209,7 @@ function renderData(){
 
       list.innerHTML+=`
       <tr>
-        <td><input type="checkbox" value="${d.id}"></td>
+        <td>${modeHapus ? `<input type="checkbox" value="${d.id}">` : ""}</td>
         <td>${no++}</td>
         <td>${d.id}</td>
         <td>${d.nama_barang}</td>
@@ -202,7 +222,7 @@ function renderData(){
   totalHarga.innerHTML=rupiah(total);
 }
 
-// HAPUS PILIHAN
+// HAPUS
 function hapusTerpilih(){
   let cek=document.querySelectorAll("input[type=checkbox]:checked");
   cek.forEach(c=>{
@@ -210,22 +230,57 @@ function hapusTerpilih(){
   });
 }
 
-// PRINT
+// PRINT (FIX TABEL)
 function printStok(){
-  let w=window.open();
-  w.document.write("<h2>STOK</h2>"+tabel.outerHTML);
-  w.print();
-}
+  const isi = document.getElementById("tabel").innerHTML;
 
-// PDF
-function exportPDF(){
-  html2pdf().from(areaPrint).save("stok.pdf");
+  const win = window.open('', '', 'width=900,height=700');
+  win.document.write(`
+    <html>
+    <head>
+    <style>
+    body{font-family:Arial;padding:20px}
+    table{border-collapse:collapse;width:100%}
+    th,td{border:1px solid black;padding:8px}
+    th{background:#eee}
+    </style>
+    </head>
+    <body>
+    <h2>STOK BARANG</h2>
+    <table>${isi}</table>
+    </body>
+    </html>
+  `);
+
+  win.document.close();
+  win.print();
 }
 
 // LAPORAN HARIAN
-function laporanHarian(){
-  let hari = new Date().toLocaleDateString("id-ID");
-  alert("Laporan Hari Ini: "+hari+"\\nTotal Stok: "+totalHarga.innerText);
+async function laporanHarian(){
+  const today = new Date();
+  today.setHours(0,0,0,0);
+
+  const snap = await db.collection("transaksi").get();
+
+  let masuk=0, keluar=0;
+
+  snap.forEach(doc=>{
+    let d=doc.data();
+    let tgl=d.tanggal.toDate();
+
+    if(tgl >= today){
+      if(d.tipe=="masuk") masuk+=d.jumlah;
+      if(d.tipe=="keluar") keluar+=d.jumlah;
+    }
+  });
+
+  alert(
+    "📊 LAPORAN HARI INI\n\n" +
+    "Masuk: "+masuk+"\n" +
+    "Keluar: "+keluar+"\n" +
+    "Sisa: lihat tabel"
+  );
 }
 
 // HELPER
