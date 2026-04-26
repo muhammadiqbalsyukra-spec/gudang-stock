@@ -8,16 +8,18 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
+<!-- PDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
 <style>
 body { font-family: Arial; padding:20px; }
 
-/* input */
 input, select, button {
   padding:8px;
   margin:5px;
 }
 
-/* tabel rapi */
+/* tabel */
 table {
   border-collapse: collapse;
   width:100%;
@@ -34,28 +36,39 @@ th, td {
   padding:8px;
 }
 
-tr:nth-child(even){
-  background:#fafafa;
-}
-
-tr:hover{
-  background:#f1f1f1;
-}
-
-/* tombol hapus halus */
-.btn-hapus{
-  background:#eee;
-  border:none;
-  padding:5px 10px;
-  cursor:pointer;
-  font-size:12px;
-}
-
-.btn-hapus:hover{
-  background:#ddd;
-}
+tr:nth-child(even){ background:#fafafa; }
+tr:hover{ background:#f1f1f1; }
 
 .hidden { display:none; }
+
+/* dropdown */
+.menu {
+  position: relative;
+}
+.menu-btn {
+  border:none;
+  background:transparent;
+  cursor:pointer;
+}
+.menu-content {
+  display:none;
+  position:absolute;
+  right:0;
+  background:white;
+  border:1px solid #ddd;
+}
+.menu:hover .menu-content {
+  display:block;
+}
+.menu-content button {
+  border:none;
+  background:none;
+  padding:8px;
+  cursor:pointer;
+}
+.menu-content button:hover {
+  background:#eee;
+}
 </style>
 </head>
 
@@ -73,26 +86,28 @@ tr:hover{
 <div id="appPage" class="hidden">
 
 <h2>📦 Input Barang</h2>
-<input type="text" id="kode" placeholder="Kode Barang">
-<input type="text" id="nama" placeholder="Nama Barang">
-<input type="number" id="harga" placeholder="Harga">
-<input type="number" id="jumlah" placeholder="Jumlah">
+<input id="kode" placeholder="Kode">
+<input id="nama" placeholder="Nama">
+<input id="harga" type="number" placeholder="Harga">
+<input id="jumlah" type="number" placeholder="Jumlah">
 
 <select id="satuan">
   <option value="pcs">PCS</option>
   <option value="crt">CRT</option>
 </select>
 
-<button onclick="tambah()">Barang Masuk</button>
-<button onclick="keluar()">Barang Keluar</button>
+<button onclick="tambah()">Masuk</button>
+<button onclick="keluar()">Keluar</button>
 
 <hr>
 
 <h2>📋 Stok Barang</h2>
 
-<input type="text" id="search" placeholder="🔍 Cari barang..." onkeyup="renderData()">
+<input id="search" placeholder="🔍 Cari..." onkeyup="renderData()">
 <button onclick="printStok()">🖨️ Print</button>
+<button onclick="exportPDF()">📄 PDF</button>
 
+<div id="areaPrint">
 <table id="tabel">
 <thead>
 <tr>
@@ -101,30 +116,32 @@ tr:hover{
 <th>Nama</th>
 <th>Stok</th>
 <th>Harga</th>
-<th>Aksi</th>
+<th></th>
 </tr>
 </thead>
-<tbody id="list"></tbody>
-</table>
 
-<div style="margin-top:10px; text-align:right;">
-<b>Total Nilai Stok: <span id="totalHarga">Rp 0</span></b>
+<tbody id="list"></tbody>
+
+<tfoot>
+<tr>
+<td colspan="4" align="right"><b>Total</b></td>
+<td><b id="totalHarga">Rp 0</b></td>
+<td></td>
+</tr>
+</tfoot>
+
+</table>
 </div>
 
 </div>
 
 <script>
 // LOGIN
-function login() {
-  const u = val("user");
-  const p = val("pass");
-
-  if (u === "admin" && p === "1234") {
-    document.getElementById("loginPage").classList.add("hidden");
-    document.getElementById("appPage").classList.remove("hidden");
-  } else {
-    alert("Login salah!");
-  }
+function login(){
+  if(val("user")=="admin" && val("pass")=="1234"){
+    loginPage.classList.add("hidden");
+    appPage.classList.remove("hidden");
+  } else alert("Salah");
 }
 
 const firebaseConfig = {
@@ -135,175 +152,126 @@ const firebaseConfig = {
   messagingSenderId: "1083922080078",
   appId: "1:1083922080078:web:59a37f73bf8ec33ffd7e1f"
 };
-
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-// FORMAT RUPIAH
-function formatRupiah(angka){
-  return "Rp " + angka.toLocaleString("id-ID");
+// FORMAT
+function formatRupiah(a){
+  return "Rp "+a.toLocaleString("id-ID");
 }
 
 // AUTO ISI
-document.getElementById("kode").addEventListener("keyup", async function() {
-  const kode = kodeVal();
-  if (!kode) return;
-
-  const doc = await db.collection("barang").doc(kode).get();
-
-  if (doc.exists) {
-    const d = doc.data();
-    valSet("nama", d.nama_barang);
-    valSet("harga", d.harga);
+kode.onkeyup = async ()=>{
+  let doc = await db.collection("barang").doc(kodeVal()).get();
+  if(doc.exists){
+    nama.value = doc.data().nama_barang;
+    harga.value = doc.data().harga;
   }
-});
+};
 
-// BARANG MASUK
-async function tambah() {
-  const kode = kodeVal();
-  const nama = val("nama");
-  const harga = num("harga");
-  const jumlah = num("jumlah");
-  const satuan = val("satuan");
+// MASUK
+async function tambah(){
+  let k=kodeVal(), n=val("nama"), h=num("harga"), j=num("jumlah");
+  let t = (val("satuan")=="crt")? j*24 : j;
 
-  if (!kode || !nama) return alert("Isi data!");
+  let ref=db.collection("barang").doc(k);
+  let doc=await ref.get();
 
-  let total = jumlah;
-  if (satuan === "crt") total = jumlah * 24;
-
-  const ref = db.collection("barang").doc(kode);
-  const doc = await ref.get();
-
-  if (doc.exists) {
-    await ref.update({
-      stok: (doc.data().stok || 0) + total
-    });
+  if(doc.exists){
+    await ref.update({stok:(doc.data().stok||0)+t});
   } else {
-    await ref.set({
-      nama_barang: nama,
-      harga: harga,
-      stok: total,
-      konversi: 24
-    });
+    await ref.set({nama_barang:n,harga:h,stok:t});
   }
-
   reset();
 }
 
-// BARANG KELUAR
-async function keluar() {
-  const kode = kodeVal();
-  const jumlah = num("jumlah");
-  const satuan = val("satuan");
+// KELUAR
+async function keluar(){
+  let k=kodeVal(), j=num("jumlah");
+  let t=(val("satuan")=="crt")? j*24:j;
 
-  if (!kode || !jumlah) return alert("Isi data!");
+  let ref=db.collection("barang").doc(k);
+  let doc=await ref.get();
 
-  let total = jumlah;
-  if (satuan === "crt") total = jumlah * 24;
+  if(!doc.exists) return alert("Tidak ada");
+  let s=doc.data().stok;
+  if(s<t) return alert("Kurang");
 
-  const ref = db.collection("barang").doc(kode);
-  const doc = await ref.get();
-
-  if (!doc.exists) return alert("Barang tidak ada");
-
-  let stok = doc.data().stok || 0;
-  if (stok < total) return alert("Stok kurang!");
-
-  await ref.update({ stok: stok - total });
-
+  await ref.update({stok:s-t});
   reset();
 }
 
 // HAPUS
-function hapus(id) {
+function hapus(id){
   db.collection("barang").doc(id).delete();
 }
 
-// SIMPAN DATA GLOBAL
-let semuaData = [];
-
-// AMBIL DATA
-db.collection("barang").onSnapshot((snap) => {
-  semuaData = [];
-  snap.forEach(doc=>{
-    semuaData.push({id:doc.id, ...doc.data()});
-  });
+// DATA
+let semuaData=[];
+db.collection("barang").onSnapshot(snap=>{
+  semuaData=[];
+  snap.forEach(d=>semuaData.push({id:d.id,...d.data()}));
   renderData();
 });
 
-// RENDER + SEARCH
+// RENDER
 function renderData(){
-  const list = document.getElementById("list");
-  const keyword = val("search").toLowerCase();
-  list.innerHTML = "";
+  list.innerHTML="";
+  let key=val("search").toLowerCase();
+  let total=0, no=1;
 
-  let no = 1;
-  let totalSemua = 0;
+  semuaData.forEach(d=>{
+    if(d.nama_barang.toLowerCase().includes(key)||d.id.includes(key)){
 
-  semuaData.forEach(d => {
+      let crt=Math.floor(d.stok/24);
+      let pcs=d.stok%24;
 
-    if (
-      d.nama_barang.toLowerCase().includes(keyword) ||
-      d.id.toLowerCase().includes(keyword)
-    ) {
+      let stok="";
+      if(crt>0&&pcs>0) stok=`${crt} crt + ${pcs} pcs`;
+      else if(crt>0) stok=`${crt} crt`;
+      else stok=`${pcs} pcs`;
 
-      const crt = Math.floor(d.stok / 24);
-      const sisa = d.stok % 24;
+      total+=d.stok*d.harga;
 
-      const stokTampil = `${d.stok} pcs (${crt} crt + ${sisa} pcs)`;
-
-      const total = d.stok * d.harga;
-      totalSemua += total;
-
-      list.innerHTML += `
-        <tr>
-          <td>${no++}</td>
-          <td>${d.id}</td>
-          <td>${d.nama_barang}</td>
-          <td>${stokTampil}</td>
-          <td>${formatRupiah(d.harga)}</td>
-          <td><button class="btn-hapus" onclick="hapus('${d.id}')">Hapus</button></td>
-        </tr>
-      `;
+      list.innerHTML+=`
+      <tr>
+        <td>${no++}</td>
+        <td>${d.id}</td>
+        <td>${d.nama_barang}</td>
+        <td>${stok}</td>
+        <td>${formatRupiah(d.harga)}</td>
+        <td>
+          <div class="menu">
+            <button class="menu-btn">⋮</button>
+            <div class="menu-content">
+              <button onclick="hapus('${d.id}')">Hapus</button>
+            </div>
+          </div>
+        </td>
+      </tr>`;
     }
   });
 
-  document.getElementById("totalHarga").innerHTML = formatRupiah(totalSemua);
+  totalHarga.innerHTML=formatRupiah(total);
 }
 
 // PRINT
 function printStok(){
-  const isi = document.getElementById("tabel").outerHTML;
+  let w=window.open();
+  w.document.write("<h2>STOK</h2>"+tabel.outerHTML);
+  w.print();
+}
 
-  const win = window.open('', '', 'width=800,height=600');
-  win.document.write(`
-    <html>
-    <head>
-    <style>
-    table{border-collapse:collapse;width:100%}
-    th,td{border:1px solid black;padding:5px}
-    </style>
-    </head>
-    <body>
-    <h2 style="text-align:center">STOK BARANG</h2>
-    ${isi}
-    </body>
-    </html>
-  `);
-
-  win.document.close();
-  win.print();
+// PDF
+function exportPDF(){
+  html2pdf().from(areaPrint).save("stok-barang.pdf");
 }
 
 // HELPER
-function val(id){ return document.getElementById(id).value }
-function valSet(id,v){ document.getElementById(id).value = v }
-function num(id){ return parseInt(val(id)) || 0 }
-function kodeVal(){ return val("kode").trim() }
-
-function reset(){
-  ["kode","nama","harga","jumlah"].forEach(id=>valSet(id,""))
-}
+function val(id){return document.getElementById(id).value}
+function num(id){return parseInt(val(id))||0}
+function kodeVal(){return val("kode").trim()}
+function reset(){["kode","nama","harga","jumlah"].forEach(i=>document.getElementById(i).value="")}
 </script>
 
 </body>
