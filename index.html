@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Toko</title>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+<style>
+body {
+  font-family: Arial;
+  padding: 20px;
+}
+input, button {
+  padding: 8px;
+  margin: 5px;
+}
+.card {
+  border: 1px solid #ccc;
+  padding: 10px;
+  margin: 5px;
+}
+</style>
+</head>
+
+<body>
+
+<h2>📦 Input Barang</h2>
+<input type="text" id="nama" placeholder="Nama Barang">
+<input type="number" id="harga" placeholder="Harga">
+<input type="number" id="stok" placeholder="Stok">
+<button onclick="tambahBarang()">Tambah</button>
+
+<hr>
+
+<h2>📋 Daftar Barang</h2>
+<div id="listBarang"></div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyD3YTIsKwI6yTwabSwI97ZxG4B81GoQbis",
+  authDomain: "gudang-app-8320e.firebaseapp.com",
+  projectId: "gudang-app-8320e",
+  storageBucket: "gudang-app-8320e.firebasestorage.app",
+  messagingSenderId: "1083922080078",
+  appId: "1:1083922080078:web:59a37f73bf8ec33ffd7e1f"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+
+// ➕ TAMBAH BARANG
+function tambahBarang() {
+  const nama = document.getElementById("nama").value;
+  const harga = parseInt(document.getElementById("harga").value);
+  const stok = parseInt(document.getElementById("stok").value);
+
+  if (!nama) {
+    alert("Nama barang wajib diisi!");
+    return;
+  }
+
+  db.collection("barang").add({
+    nama_barang: nama,
+    harga: harga || 0,
+    stok: stok || 0,
+    konversi: 1
+  });
+
+  document.getElementById("nama").value = "";
+  document.getElementById("harga").value = "";
+  document.getElementById("stok").value = "";
+}
+
+
+// 🔄 TAMPILKAN DATA REALTIME
+const listBarang = document.getElementById("listBarang");
+
+db.collection("barang").onSnapshot((snapshot) => {
+  listBarang.innerHTML = "";
+
+  snapshot.forEach((doc) => {
+    const data = doc.data();
+
+    listBarang.innerHTML += `
+      <div class="card">
+        <b>${data.nama_barang}</b><br>
+        Harga: ${data.harga}<br>
+        Stok: ${data.stok}
+      </div>
+    `;
+  });
+});
+</script>
+
+</body>
+</html>
