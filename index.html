@@ -205,7 +205,7 @@ function renderData(){
 
       let stok = crt>0 ? (pcs>0 ? `${crt} crt + ${pcs} pcs` : `${crt} crt`) : `${pcs} pcs`;
 
-      total+=d.stok*d.harga;
+      total+= crt *d.harga;
 
       list.innerHTML+=`
       <tr>
