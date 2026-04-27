@@ -102,7 +102,6 @@ tfoot{background:#f1f5f9;font-weight:bold}
 </div>
 
 </div>
-
 </div>
 
 <script>
@@ -142,7 +141,7 @@ function logout(){
  auth.signOut();
 }
 
-// AUTH STATE
+// AUTH
 auth.onAuthStateChanged(u=>{
  if(u){
    user=u;
@@ -183,56 +182,85 @@ function rupiah(x){
 function autoIsi(){
  let item=data.find(x=>x.id==kode.value);
  if(item){
-  nama.value=item.nama;
-  harga.value=item.harga||0;
-  isi.value=item.isi||24;
+  nama.value=item.nama || "";
+  harga.value=item.harga || 0;
+  isi.value=item.isi || 24;
  }
 }
 
-// SIMPAN
+// SIMPAN FIX TOTAL
 function simpan(jenis){
 
- let isiVal=parseInt(isi.value)||24;
- let jumlahVal=parseInt(jumlah.value)||0;
+ let isiVal = parseInt(isi.value) || 24;
+ let jumlahVal = parseInt(jumlah.value) || 0;
 
- if(!kode.value||!nama.value||jumlahVal<=0){
-  alert("Isi lengkap");
+ if(!kode.value){
+  alert("Kode wajib diisi");
   return;
  }
 
- let qty=satuan.value=="CRT"?jumlahVal*isiVal:jumlahVal;
+ let itemLama = data.find(x=>x.id==kode.value);
 
- let ref=db.collection("gudang").doc(user.uid).collection("stok").doc(kode.value);
+ let namaVal = nama.value || (itemLama ? itemLama.nama : "");
+ let hargaVal = parseInt(harga.value) || (itemLama ? itemLama.harga : 0);
+
+ if(!namaVal){
+  alert("Nama barang kosong");
+  return;
+ }
+
+ if(hargaVal <= 0){
+  alert("Harga harus diisi");
+  return;
+ }
+
+ if(jumlahVal <= 0){
+  alert("Jumlah harus diisi");
+  return;
+ }
+
+ let qty = satuan.value=="CRT" ? jumlahVal*isiVal : jumlahVal;
+
+ let ref = db.collection("gudang").doc(user.uid).collection("stok").doc(kode.value);
 
  db.runTransaction(async t=>{
-  let doc=await t.get(ref);
-  let stokLama=doc.exists?doc.data().stok:0;
+  let doc = await t.get(ref);
+  let stokLama = doc.exists ? doc.data().stok : 0;
 
-  let stokBaru=jenis=="masuk"?stokLama+qty:stokLama-qty;
-  if(stokBaru<0){alert("Stok kurang");return;}
+  let stokBaru = jenis=="masuk" ? stokLama + qty : stokLama - qty;
+
+  if(stokBaru < 0){
+    alert("Stok tidak cukup");
+    return;
+  }
 
   t.set(ref,{
-   nama:nama.value,
-   stok:stokBaru,
-   harga:parseInt(harga.value)||0,
-   isi:isiVal
+    nama: namaVal,
+    stok: stokBaru,
+    harga: hargaVal,
+    isi: isiVal
   });
 
   db.collection("gudang").doc(user.uid).collection("riwayat").add({
-   kode:kode.value,
-   nama:nama.value,
-   jenis:jenis,
-   qty:qty,
-   isi:isiVal||24,
-   waktu:new Date()
+    kode: kode.value,
+    nama: namaVal,
+    jenis: jenis,
+    qty: qty,
+    isi: isiVal,
+    harga: hargaVal,
+    waktu: new Date()
   });
 
  });
 
- kode.value="";nama.value="";harga.value="";jumlah.value="";isi.value="";
+ kode.value="";
+ nama.value="";
+ harga.value="";
+ jumlah.value="";
+ isi.value="";
 }
 
-// RENDER
+// RENDER FIX
 function render(){
  let key=cari.value.toLowerCase();
  let html="",total=0,no=1;
@@ -240,8 +268,8 @@ function render(){
  data.filter(x=>!key||x.nama.toLowerCase().includes(key)||x.id.includes(key))
  .forEach(d=>{
 
-  let isi=d.isi||24;
-  let hargaCrt=d.harga||0;
+  let isi = Number(d.isi) || 24;
+  let hargaCrt = Number(d.harga) || 0;
 
   let crt=Math.floor(d.stok/isi);
   let pcs=d.stok%isi;
@@ -273,7 +301,7 @@ function resetCari(){
  render();
 }
 
-// HAPUS AMAN
+// HAPUS
 function hapusDipilih(){
  let cek=document.querySelectorAll("#list input:checked");
  if(cek.length==0)return alert("Pilih data");
@@ -294,7 +322,7 @@ function printData(){
  w.print();
 }
 
-// LAPORAN
+// LAPORAN FIX
 function renderLaporan(){
 
  let hariIni=new Date().toDateString();
@@ -304,7 +332,12 @@ function renderLaporan(){
   let tgl=new Date(x.waktu.seconds*1000).toDateString();
   if(tgl!=hariIni)return;
 
-  if(!map[x.kode])map[x.kode]={nama:x.nama,masuk:0,keluar:0,isi:x.isi||24};
+  if(!map[x.kode])map[x.kode]={
+    nama:x.nama || "-",
+    masuk:0,
+    keluar:0,
+    isi:Number(x.isi)||24
+  };
 
   if(x.jenis=="masuk")map[x.kode].masuk+=x.qty;
   else map[x.kode].keluar+=x.qty;
@@ -313,7 +346,7 @@ function renderLaporan(){
  let html="";
 
  Object.values(map).forEach(d=>{
-  let isi=d.isi||24;
+  let isi=d.isi;
 
   let mCrt=Math.floor(d.masuk/isi);
   let mPcs=d.masuk%isi;
