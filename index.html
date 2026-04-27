@@ -41,6 +41,7 @@ tfoot{background:#f1f5f9;font-weight:bold}
 <div id="app" style="display:none">
 
 <div class="card">
+<button onclick="logout()" style="float:right">Logout</button>
 <h3>Input Barang</h3>
 
 <input id="kode" placeholder="Kode Barang" oninput="autoIsi()">
@@ -136,6 +137,11 @@ function register(){
  .catch(e=>alert(e.message));
 }
 
+// LOGOUT
+function logout(){
+ auth.signOut();
+}
+
 // AUTH STATE
 auth.onAuthStateChanged(u=>{
  if(u){
@@ -149,7 +155,7 @@ auth.onAuthStateChanged(u=>{
  }
 });
 
-// LOAD DATA USER
+// LOAD DATA
 function loadData(){
 
  db.collection("gudang").doc(user.uid).collection("stok")
@@ -178,7 +184,7 @@ function autoIsi(){
  let item=data.find(x=>x.id==kode.value);
  if(item){
   nama.value=item.nama;
-  harga.value=item.harga;
+  harga.value=item.harga||0;
   isi.value=item.isi||24;
  }
 }
@@ -217,7 +223,7 @@ function simpan(jenis){
    nama:nama.value,
    jenis:jenis,
    qty:qty,
-   isi:isiVal,
+   isi:isiVal||24,
    waktu:new Date()
   });
 
@@ -235,10 +241,12 @@ function render(){
  .forEach(d=>{
 
   let isi=d.isi||24;
+  let hargaCrt=d.harga||0;
+
   let crt=Math.floor(d.stok/isi);
   let pcs=d.stok%isi;
 
-  let hargaPcs=d.harga/isi;
+  let hargaPcs=hargaCrt/isi;
   let nilai=d.stok*hargaPcs;
 
   total+=nilai;
@@ -250,7 +258,7 @@ function render(){
   <td>${d.id}</td>
   <td>${d.nama}</td>
   <td>${crt} crt + ${pcs} pcs</td>
-  <td>${rupiah(d.harga)}</td>
+  <td>${rupiah(hargaCrt)}</td>
   <td>${rupiah(nilai)}</td>
   </tr>`;
  });
@@ -259,7 +267,7 @@ function render(){
  totalHarga.innerText=rupiah(total);
 }
 
-// RESET SEARCH
+// RESET
 function resetCari(){
  cari.value="";
  render();
@@ -286,7 +294,7 @@ function printData(){
  w.print();
 }
 
-// LAPORAN PER ITEM
+// LAPORAN
 function renderLaporan(){
 
  let hariIni=new Date().toDateString();
@@ -296,7 +304,7 @@ function renderLaporan(){
   let tgl=new Date(x.waktu.seconds*1000).toDateString();
   if(tgl!=hariIni)return;
 
-  if(!map[x.kode])map[x.kode]={nama:x.nama,masuk:0,keluar:0,isi:x.isi};
+  if(!map[x.kode])map[x.kode]={nama:x.nama,masuk:0,keluar:0,isi:x.isi||24};
 
   if(x.jenis=="masuk")map[x.kode].masuk+=x.qty;
   else map[x.kode].keluar+=x.qty;
@@ -305,11 +313,13 @@ function renderLaporan(){
  let html="";
 
  Object.values(map).forEach(d=>{
-  let mCrt=Math.floor(d.masuk/d.isi);
-  let mPcs=d.masuk%d.isi;
+  let isi=d.isi||24;
 
-  let kCrt=Math.floor(d.keluar/d.isi);
-  let kPcs=d.keluar%d.isi;
+  let mCrt=Math.floor(d.masuk/isi);
+  let mPcs=d.masuk%isi;
+
+  let kCrt=Math.floor(d.keluar/isi);
+  let kPcs=d.keluar%isi;
 
   html+=`
   <b>${d.nama}</b><br>
