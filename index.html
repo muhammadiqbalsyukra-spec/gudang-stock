@@ -154,7 +154,7 @@ auth.onAuthStateChanged(u=>{
  }
 });
 
-// LOAD DATA
+// LOAD
 function loadData(){
 
  db.collection("gudang").doc(user.uid).collection("stok")
@@ -182,85 +182,65 @@ function rupiah(x){
 function autoIsi(){
  let item=data.find(x=>x.id==kode.value);
  if(item){
-  nama.value=item.nama || "";
-  harga.value=item.harga || 0;
-  isi.value=item.isi || 24;
+  nama.value=item.nama||"";
+  harga.value=item.harga||0;
+  isi.value=item.isi||24;
  }
 }
 
-// SIMPAN FIX TOTAL
+// SIMPAN
 function simpan(jenis){
 
- let isiVal = parseInt(isi.value) || 24;
- let jumlahVal = parseInt(jumlah.value) || 0;
+ let isiVal=parseInt(isi.value)||24;
+ let jumlahVal=parseInt(jumlah.value)||0;
 
- if(!kode.value){
-  alert("Kode wajib diisi");
+ let itemLama=data.find(x=>x.id==kode.value);
+
+ let namaVal=nama.value|| (itemLama?itemLama.nama:"");
+ let hargaVal=parseInt(harga.value)|| (itemLama?itemLama.harga:0);
+
+ if(!kode.value||!namaVal||hargaVal<=0||jumlahVal<=0){
+  alert("Data belum lengkap");
   return;
  }
 
- let itemLama = data.find(x=>x.id==kode.value);
+ let qty=satuan.value=="CRT"?jumlahVal*isiVal:jumlahVal;
 
- let namaVal = nama.value || (itemLama ? itemLama.nama : "");
- let hargaVal = parseInt(harga.value) || (itemLama ? itemLama.harga : 0);
-
- if(!namaVal){
-  alert("Nama barang kosong");
-  return;
- }
-
- if(hargaVal <= 0){
-  alert("Harga harus diisi");
-  return;
- }
-
- if(jumlahVal <= 0){
-  alert("Jumlah harus diisi");
-  return;
- }
-
- let qty = satuan.value=="CRT" ? jumlahVal*isiVal : jumlahVal;
-
- let ref = db.collection("gudang").doc(user.uid).collection("stok").doc(kode.value);
+ let ref=db.collection("gudang").doc(user.uid).collection("stok").doc(kode.value);
 
  db.runTransaction(async t=>{
-  let doc = await t.get(ref);
-  let stokLama = doc.exists ? doc.data().stok : 0;
+  let doc=await t.get(ref);
+  let stokLama=doc.exists?doc.data().stok:0;
 
-  let stokBaru = jenis=="masuk" ? stokLama + qty : stokLama - qty;
+  let stokBaru=jenis=="masuk"?stokLama+qty:stokLama-qty;
 
-  if(stokBaru < 0){
-    alert("Stok tidak cukup");
-    return;
+  if(stokBaru<0){
+   alert("Stok tidak cukup");
+   return;
   }
 
   t.set(ref,{
-    nama: namaVal,
-    stok: stokBaru,
-    harga: hargaVal,
-    isi: isiVal
+    nama:namaVal,
+    stok:stokBaru,
+    harga:hargaVal,
+    isi:isiVal
   });
 
   db.collection("gudang").doc(user.uid).collection("riwayat").add({
-    kode: kode.value,
-    nama: namaVal,
-    jenis: jenis,
-    qty: qty,
-    isi: isiVal,
-    harga: hargaVal,
-    waktu: new Date()
+    kode:kode.value,
+    nama:namaVal,
+    jenis:jenis,
+    qty:qty,
+    isi:isiVal,
+    waktu:new Date()
   });
 
  });
 
- kode.value="";
- nama.value="";
- harga.value="";
- jumlah.value="";
- isi.value="";
+ kode.value="";nama.value="";harga.value="";jumlah.value="";isi.value="";
 }
 
-// RENDER FIX
+// RENDER
 function render(){
  let key=cari.value.toLowerCase();
  let html="",total=0,no=1;
@@ -268,14 +248,13 @@ function render(){
  data.filter(x=>!key||x.nama.toLowerCase().includes(key)||x.id.includes(key))
  .forEach(d=>{
 
-  let isi = Number(d.isi) || 24;
-  let hargaCrt = Number(d.harga) || 0;
+  let isi=Number(d.isi)||24;
+  let harga=Number(d.harga)||0;
 
   let crt=Math.floor(d.stok/isi);
   let pcs=d.stok%isi;
 
-  let hargaPcs=hargaCrt/isi;
-  let nilai=d.stok*hargaPcs;
+  let nilai=d.stok*(harga/isi);
 
   total+=nilai;
 
@@ -286,7 +265,7 @@ function render(){
   <td>${d.id}</td>
   <td>${d.nama}</td>
   <td>${crt} crt + ${pcs} pcs</td>
-  <td>${rupiah(hargaCrt)}</td>
+  <td>${rupiah(harga)}</td>
   <td>${rupiah(nilai)}</td>
   </tr>`;
  });
@@ -306,8 +285,7 @@ function hapusDipilih(){
  let cek=document.querySelectorAll("#list input:checked");
  if(cek.length==0)return alert("Pilih data");
 
- let konfirmasi=prompt("Ketik HAPUS");
- if(konfirmasi!="HAPUS")return;
+ if(prompt("Ketik HAPUS")!="HAPUS")return;
 
  cek.forEach(c=>{
   db.collection("gudang").doc(user.uid)
@@ -322,30 +300,40 @@ function printData(){
  w.print();
 }
 
-// LAPORAN FIX
+// 🔥 LAPORAN FIX TOTAL
 function renderLaporan(){
 
- let hariIni=new Date().toDateString();
+ let today=new Date();
+ today.setHours(0,0,0,0);
+
  let map={};
 
  riwayat.forEach(x=>{
-  let tgl=new Date(x.waktu.seconds*1000).toDateString();
-  if(tgl!=hariIni)return;
 
-  if(!map[x.kode])map[x.kode]={
-    nama:x.nama || "-",
-    masuk:0,
-    keluar:0,
-    isi:Number(x.isi)||24
-  };
+  let waktu=x.waktu?.seconds
+   ? new Date(x.waktu.seconds*1000)
+   : new Date(x.waktu);
 
-  if(x.jenis=="masuk")map[x.kode].masuk+=x.qty;
+  if(waktu < today) return;
+
+  if(!map[x.kode]){
+    map[x.kode]={
+      nama:x.nama||"-",
+      masuk:0,
+      keluar:0,
+      isi:Number(x.isi)||24
+    };
+  }
+
+  if(x.jenis=="masuk") map[x.kode].masuk+=x.qty;
   else map[x.kode].keluar+=x.qty;
+
  });
 
  let html="";
 
  Object.values(map).forEach(d=>{
+
   let isi=d.isi;
 
   let mCrt=Math.floor(d.masuk/isi);
@@ -355,9 +343,11 @@ function renderLaporan(){
   let kPcs=d.keluar%isi;
 
   html+=`
+  <div style="padding:8px;border-bottom:1px solid #ddd">
   <b>${d.nama}</b><br>
-  Masuk: ${mCrt} crt + ${mPcs} pcs<br>
-  Keluar: ${kCrt} crt + ${kPcs} pcs<br><br>`;
+  📥 Masuk: ${mCrt} crt + ${mPcs} pcs<br>
+  📤 Keluar: ${kCrt} crt + ${kPcs} pcs
+  </div>`;
  });
 
  laporan.innerHTML=html||"Belum ada transaksi hari ini";
