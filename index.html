@@ -13,15 +13,22 @@
 <style>
 body{margin:0;font-family:sans-serif;background:#f4f6f9;}
 header{background:#2563eb;color:#fff;padding:15px;text-align:center;}
-.container{padding:10px;padding-bottom:80px;max-width:600px;margin:auto;}
+.container{padding:10px;padding-bottom:90px;max-width:700px;margin:auto;}
 .card{background:#fff;padding:12px;border-radius:12px;margin-bottom:10px;}
 input,select{width:100%;padding:10px;margin-bottom:8px;border-radius:8px;border:1px solid #ddd;}
-button{width:100%;padding:10px;border:none;border-radius:10px;margin-top:5px;}
-.btn{background:#2563eb;color:white;}
-.btn-out{background:#ef4444;color:white;}
+button{padding:10px;border:none;border-radius:10px;margin-top:5px;}
+.btn{background:#2563eb;color:white;width:100%;}
+.btn-red{background:#ef4444;color:white;}
+.btn-small{padding:6px 10px;font-size:12px;margin:2px;}
 .navbar{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:space-around;background:#fff;padding:10px;}
 .page{display:none;}
 .page.active{display:block;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th,td{border:1px solid #ddd;padding:6px;text-align:center;}
+th{background:#e5e7eb;}
+tfoot td{font-weight:bold;}
+.top-actions{display:flex;gap:6px;margin-bottom:6px;}
+.top-actions button{flex:1;}
 </style>
 </head>
 
@@ -31,14 +38,16 @@ button{width:100%;padding:10px;border:none;border-radius:10px;margin-top:5px;}
 
 <div class="container">
 
+<!-- LOGIN -->
 <div id="loginPage" class="card">
 <h3>Login</h3>
 <input id="email" placeholder="Email">
 <input id="password" type="password" placeholder="Password">
 <button class="btn" onclick="login()">Login</button>
-<button onclick="register()">Daftar</button>
+<button class="btn" onclick="register()">Daftar</button>
 </div>
 
+<!-- APP -->
 <div id="app" style="display:none">
 
 <!-- INPUT -->
@@ -64,6 +73,10 @@ button{width:100%;padding:10px;border:none;border-radius:10px;margin-top:5px;}
 <input id="isi" type="number" placeholder="Isi per CRT (contoh 24)">
 <input id="jumlah" type="number" placeholder="Jumlah">
 
+<!-- 🔥 Tambahan harga -->
+<input id="harga" type="number" placeholder="Harga PCS (opsional)">
+<input id="harga_crt" type="number" placeholder="Harga CRT (opsional)">
+
 <button class="btn" onclick="simpan()">Simpan</button>
 
 </div>
@@ -71,14 +84,38 @@ button{width:100%;padding:10px;border:none;border-radius:10px;margin-top:5px;}
 
 <!-- STOK -->
 <div id="pageStok" class="page">
+
 <input id="cari" placeholder="Cari barang..." oninput="renderStok()">
-<div id="listStok"></div>
+
+<div class="top-actions">
+<button class="btn-small" onclick="printStok()">Print / PDF</button>
+<button class="btn-small btn-red" onclick="hapusDipilih()">Hapus Dipilih</button>
 </div>
 
-<!-- RIWAYAT -->
-<div id="pageRiwayat" class="page">
-<div id="laporan" class="card"></div>
-<div id="listRiwayat"></div>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>No</th>
+<th>Kode</th>
+<th>Nama</th>
+<th>Stok</th>
+<th>Harga</th>
+<th>Total</th>
+</tr>
+</thead>
+
+<tbody id="listStok"></tbody>
+
+<tfoot>
+<tr>
+<td colspan="5">TOTAL NILAI</td>
+<td colspan="2" id="grandTotal">Rp 0</td>
+</tr>
+</tfoot>
+
+</table>
+
 </div>
 
 </div>
@@ -87,7 +124,6 @@ button{width:100%;padding:10px;border:none;border-radius:10px;margin-top:5px;}
 <div class="navbar">
 <button onclick="showPage('Input')">Input</button>
 <button onclick="showPage('Stok')">Stok</button>
-<button onclick="showPage('Riwayat')">Riwayat</button>
 </div>
 
 <script>
@@ -105,7 +141,7 @@ firebase.initializeApp(firebaseConfig);
 const auth=firebase.auth();
 const db=firebase.firestore();
 
-let user=null, dataStok=[], dataRiwayat=[];
+let user=null, dataStok=[];
 let scanner=null;
 
 // AUTH
@@ -124,7 +160,6 @@ auth.onAuthStateChanged(u=>{
   loginPage.style.display="none";
   app.style.display="block";
   loadStok();
-  loadRiwayat();
  }else{
   loginPage.style.display="block";
   app.style.display="none";
@@ -147,7 +182,6 @@ function startScanner(){
   stopScanner();
  });
 }
-
 function stopScanner(){
  if(scanner){
   scanner.stop().catch(()=>{});
@@ -156,9 +190,8 @@ function stopScanner(){
  }
 }
 
-// SIMPAN
+// 🔥 SIMPAN
 function simpan(){
-
  let code=barcode.value;
  let namaBarang=nama.value;
  let jumlahInput=parseInt(jumlah.value)||0;
@@ -189,27 +222,16 @@ function simpan(){
    t.set(ref,{
      nama:namaBarang,
      stok:stokBaru,
-     isi:isiPerCrt
+     isi:isiPerCrt,
+     harga:parseInt(harga.value)||0,
+     harga_crt:parseInt(harga_crt.value)||0
    });
-
-   db.collection("gudang").doc(user.uid).collection("riwayat").add({
-     nama:namaBarang,
-     barcode:code,
-     jenis:jenis.value,
-     qty:qty,
-     waktu:new Date()
-   });
-
  });
 
- alert("Berhasil disimpan");
-
- barcode.value="";
- nama.value="";
- jumlah.value="";
+ alert("Tersimpan");
 }
 
-// LOAD STOK
+// LOAD
 function loadStok(){
  db.collection("gudang").doc(user.uid).collection("stok")
  .onSnapshot(snap=>{
@@ -219,64 +241,56 @@ function loadStok(){
  });
 }
 
-// RENDER STOK + SEARCH
+// 🔥 RENDER TABLE
 function renderStok(){
  let keyword=cari.value?cari.value.toLowerCase():"";
- let html="";
+ let html="", no=1, grand=0;
 
  dataStok
- .filter(x=>x.nama.toLowerCase().includes(keyword) || x.barcode.includes(keyword))
- .forEach(data=>{
+ .filter(x=>x.nama.toLowerCase().includes(keyword)||x.barcode.includes(keyword))
+ .forEach(d=>{
 
-   let crt=Math.floor(data.stok/(data.isi||1));
-   let pcs=data.stok%(data.isi||1);
+   let isi=d.isi||1;
+   let crt=Math.floor(d.stok/isi);
+   let pcs=d.stok%isi;
 
-   html+=`
-   <div class="card">
-   <b>${data.nama}</b><br>
-   ${data.barcode}<br>
-   ${crt} CRT ${pcs} PCS
-   </div>`;
- });
+   let stokText=crt>0?(pcs>0?`${crt} crt ${pcs} pcs`:`${crt} crt`):`${pcs} pcs`;
 
- listStok.innerHTML=html||"Tidak ditemukan";
-}
-
-// LOAD RIWAYAT + LAPORAN
-function loadRiwayat(){
- db.collection("gudang").doc(user.uid).collection("riwayat")
- .orderBy("waktu","desc")
- .onSnapshot(snap=>{
-   dataRiwayat=[];
-   snap.forEach(d=>dataRiwayat.push(d.data()));
-   renderRiwayat();
- });
-}
-
-// RENDER RIWAYAT + LAPORAN
-function renderRiwayat(){
- let masuk=0, keluar=0;
- let html="";
-
- dataRiwayat.forEach(x=>{
-   if(x.jenis=="masuk") masuk+=x.qty;
-   else keluar+=x.qty;
+   let hargaPcs=d.harga_crt?d.harga_crt/isi:d.harga;
+   let total=d.stok*hargaPcs;
+   grand+=total;
 
    html+=`
-   <div class="card">
-   ${x.nama}<br>
-   ${x.jenis} : ${x.qty} pcs<br>
-   <small>${new Date(x.waktu.seconds*1000).toLocaleString()}</small>
-   </div>`;
+   <tr>
+   <td><input type="checkbox" value="${d.barcode}"></td>
+   <td>${no++}</td>
+   <td>${d.barcode}</td>
+   <td>${d.nama}</td>
+   <td>${stokText}</td>
+   <td>Rp ${Math.round(hargaPcs)}</td>
+   <td>Rp ${Math.round(total)}</td>
+   </tr>`;
  });
 
- laporan.innerHTML=`
- <b>Laporan:</b><br>
- Barang Masuk: ${masuk} pcs<br>
- Barang Keluar: ${keluar} pcs
- `;
+ listStok.innerHTML=html||"<tr><td colspan='7'>Kosong</td></tr>";
+ grandTotal.innerText="Rp "+Math.round(grand);
+}
 
- listRiwayat.innerHTML=html||"Belum ada";
+// 🔥 HAPUS
+function hapusDipilih(){
+ let cek=document.querySelectorAll("#listStok input:checked");
+ cek.forEach(c=>{
+  db.collection("gudang").doc(user.uid)
+  .collection("stok").doc(c.value).delete();
+ });
+}
+
+// 🔥 PRINT
+function printStok(){
+ let isi=document.querySelector("table").outerHTML;
+ let w=window.open("");
+ w.document.write("<html><body>"+isi+"</body></html>");
+ w.print();
 }
 
 </script>
