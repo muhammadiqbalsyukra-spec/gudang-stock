@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Smart Toko</title>
+<title>Gudang Stok</title>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -12,13 +12,13 @@
 
 <style>
 body{margin:0;font-family:sans-serif;background:#f4f6f9;}
-header{background:#22c55e;color:#fff;padding:15px;text-align:center;}
-.container{padding:10px;padding-bottom:100px;max-width:600px;margin:auto;}
+header{background:#2563eb;color:#fff;padding:15px;text-align:center;}
+.container{padding:10px;padding-bottom:80px;max-width:600px;margin:auto;}
 .card{background:#fff;padding:12px;border-radius:12px;margin-bottom:10px;}
 input,select{width:100%;padding:10px;margin-bottom:8px;border-radius:8px;border:1px solid #ddd;}
 button{width:100%;padding:10px;border:none;border-radius:10px;margin-top:5px;}
-.btn{background:#22c55e;color:white;}
-.btn-del{background:red;color:white;}
+.btn{background:#2563eb;color:white;}
+.btn-out{background:#ef4444;color:white;}
 .navbar{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:space-around;background:#fff;padding:10px;}
 .page{display:none;}
 .page.active{display:block;}
@@ -27,7 +27,7 @@ button{width:100%;padding:10px;border:none;border-radius:10px;margin-top:5px;}
 
 <body>
 
-<header>🛒 Smart Toko</header>
+<header>📦 Gudang Stok</header>
 
 <div class="container">
 
@@ -41,39 +41,20 @@ button{width:100%;padding:10px;border:none;border-radius:10px;margin-top:5px;}
 
 <div id="app" style="display:none">
 
-<!-- KASIR -->
-<div id="pageKasir" class="page active">
-<input id="search" placeholder="Scan / ketik..." oninput="autoSearch()">
-
-<button class="btn" onclick="startScannerKasir()">📷 Scan Kasir</button>
-<button class="btn-del" onclick="stopAllScanner()">Stop</button>
-
-<div id="readerKasir"></div>
-
-<div id="cartBox" class="card"></div>
-<div id="totalBox"></div>
-
-<select id="ukuranStruk">
-  <option value="58">58 mm</option>
-  <option value="72">72 mm</option>
-  <option value="80">80 mm</option>
-</select>
-
-<button class="btn" onclick="checkout()">Checkout</button>
-
-<div id="struk" class="card" style="display:none"></div>
-<button class="btn" onclick="printStruk()">Print</button>
-</div>
-
-<!-- PRODUK -->
-<div id="pageProduk" class="page">
+<!-- INPUT -->
+<div id="pageInput" class="page active">
 <div class="card">
 
-<button class="btn" onclick="startScannerProduk()">📷 Scan Barcode</button>
-<div id="readerProduk"></div>
+<button class="btn" onclick="startScanner()">📷 Scan Barcode</button>
+<div id="reader"></div>
 
+<input id="barcode" placeholder="Barcode">
 <input id="nama" placeholder="Nama barang">
-<input id="barcodeInput" placeholder="Barcode">
+
+<select id="jenis">
+<option value="masuk">Barang Masuk</option>
+<option value="keluar">Barang Keluar</option>
+</select>
 
 <select id="satuan">
 <option value="PCS">PCS</option>
@@ -81,44 +62,48 @@ button{width:100%;padding:10px;border:none;border-radius:10px;margin-top:5px;}
 </select>
 
 <input id="isi" type="number" placeholder="Isi per CRT (contoh 24)">
-<input id="stok" type="number" placeholder="Stok">
-<input id="harga" type="number" placeholder="Harga PCS">
-<input id="harga_crt" type="number" placeholder="Harga CRT">
+<input id="jumlah" type="number" placeholder="Jumlah">
 
-<button class="btn" onclick="tambahProduk()">Simpan</button>
+<button class="btn" onclick="simpan()">Simpan</button>
+
 </div>
+</div>
+
+<!-- STOK -->
+<div id="pageStok" class="page">
+<input id="cari" placeholder="Cari barang..." oninput="renderStok()">
+<div id="listStok"></div>
+</div>
+
+<!-- RIWAYAT -->
+<div id="pageRiwayat" class="page">
+<div id="laporan" class="card"></div>
+<div id="listRiwayat"></div>
 </div>
 
 </div>
 </div>
 
 <div class="navbar">
-<button onclick="showPage('Kasir')">Kasir</button>
-<button onclick="showPage('Produk')">Produk</button>
+<button onclick="showPage('Input')">Input</button>
+<button onclick="showPage('Stok')">Stok</button>
+<button onclick="showPage('Riwayat')">Riwayat</button>
 </div>
 
 <script>
 
 const firebaseConfig = {
-  apiKey: "AIzaSyD3YTIsKwI6yTwabSwI97ZxG4B81GoQbis",
-  authDomain: "gudang-app-8320e.firebaseapp.com",
-  projectId: "gudang-app-8320e",
-  storageBucket: "gudang-app-8320e.firebasestorage.app",
-  messagingSenderId: "1083922080078",
-  appId: "1:1083922080078:web:59a37f73bf8ec33ffd7e1f"
+  apiKey: "AIzaSy...",
+  authDomain: "smarttoko-cfa75.firebaseapp.com",
+  projectId: "smarttoko-cfa75",
 };
 
 firebase.initializeApp(firebaseConfig);
 const auth=firebase.auth();
 const db=firebase.firestore();
 
-let user=null, produk=[], cart=[];
-let scannerKasir=null, scannerProduk=null;
-let lastScan="";
-
-function beep(){
- new Audio("https://www.soundjay.com/button/beep-07.wav").play();
-}
+let user=null, dataStok=[], dataRiwayat=[];
+let scanner=null;
 
 // AUTH
 function login(){
@@ -135,155 +120,160 @@ auth.onAuthStateChanged(u=>{
   user=u;
   loginPage.style.display="none";
   app.style.display="block";
-  loadData();
+  loadStok();
+  loadRiwayat();
  }else{
   loginPage.style.display="block";
   app.style.display="none";
  }
 });
 
-// LOAD
-function loadData(){
- db.collection("users").doc(user.uid).collection("produk")
- .onSnapshot(snap=>{
-  produk=[];
-  snap.forEach(d=>produk.push({...d.data(),id:d.id}));
- });
-}
-
 // NAV
 function showPage(p){
  document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));
  document.getElementById("page"+p).classList.add("active");
- stopAllScanner();
-}
-
-// SCANNER STOP
-function stopAllScanner(){
- if(scannerKasir){scannerKasir.stop().catch(()=>{});scannerKasir=null;readerKasir.innerHTML="";}
- if(scannerProduk){scannerProduk.stop().catch(()=>{});scannerProduk=null;readerProduk.innerHTML="";}
+ stopScanner();
 }
 
 // SCANNER
-function startScannerKasir(){
- stopAllScanner();
- scannerKasir=new Html5Qrcode("readerKasir");
- scannerKasir.start({ facingMode:"environment" },{ fps:10, qrbox:250 },text=>{
-  if(text===lastScan)return;
-  lastScan=text;
-  beep();
-  tambahCart(text);
-  setTimeout(()=>lastScan="",1500);
+function startScanner(){
+ stopScanner();
+ scanner=new Html5Qrcode("reader");
+ scanner.start({ facingMode:"environment" },{ fps:10, qrbox:250 },text=>{
+  barcode.value=text;
+  stopScanner();
  });
 }
 
-function startScannerProduk(){
- stopAllScanner();
- scannerProduk=new Html5Qrcode("readerProduk");
- scannerProduk.start({ facingMode:"environment" },{ fps:10, qrbox:250 },text=>{
-  barcodeInput.value=text;
-  stopAllScanner();
- });
-}
-
-// 🔥 TAMBAH PRODUK FIX
-function tambahProduk(){
- let isiPerCrt=parseInt(isi.value)||1;
- let jumlah=parseInt(stok.value)||0;
-
- let stokFinal = satuan.value=="CRT" ? jumlah*isiPerCrt : jumlah;
-
- db.collection("users").doc(user.uid).collection("produk").add({
-  nama:nama.value,
-  barcode:barcodeInput.value,
-  stok:stokFinal,
-  harga:parseInt(harga.value)||0,
-  harga_crt:parseInt(harga_crt.value)||0,
-  isi:isiPerCrt
- });
-
- alert("Tersimpan");
-}
-
-// CART
-function tambahCart(code){
- let p=produk.find(x=>x.barcode==code);
- if(!p)return alert("Tidak ada");
-
- let item=cart.find(x=>x.barcode==code);
- if(item)item.qty++;
- else cart.push({...p,qty:1});
-
- renderCart();
-}
-
-// 🔥 FIX TOTAL
-function renderCart(){
- let html="",total=0;
-
- cart.forEach((c,i)=>{
-  let hargaPcs = c.harga_crt ? c.harga_crt/(c.isi||1) : c.harga;
-  let sub=c.qty*hargaPcs;
-  total+=sub;
-
-  html+=`${c.nama}<br>${c.qty} x Rp ${Math.round(hargaPcs)} = Rp ${Math.round(sub)}
-  <br><button onclick="hapus(${i})">Hapus</button><hr>`;
- });
-
- cartBox.innerHTML=html||"Kosong";
- totalBox.innerHTML="<b>Total: Rp "+Math.round(total)+"</b>";
-}
-
-function hapus(i){
- cart.splice(i,1);
- renderCart();
-}
-
-function autoSearch(){
- let code=search.value.trim();
- if(produk.find(x=>x.barcode==code)){
-  tambahCart(code);
-  search.value="";
+function stopScanner(){
+ if(scanner){
+  scanner.stop().catch(()=>{});
+  scanner=null;
+  reader.innerHTML="";
  }
 }
 
-// CHECKOUT
-function checkout(){
- if(cart.length==0)return;
+// SIMPAN
+function simpan(){
 
- let total=0;
- cart.forEach(c=>{
-  let hargaPcs=c.harga_crt?c.harga_crt/(c.isi||1):c.harga;
-  total+=c.qty*hargaPcs;
+ let code=barcode.value;
+ let namaBarang=nama.value;
+ let jumlahInput=parseInt(jumlah.value)||0;
+ let isiPerCrt=parseInt(isi.value)||1;
+
+ if(!code || !namaBarang || jumlahInput<=0){
+  alert("Lengkapi data");
+  return;
+ }
+
+ let qty = satuan.value=="CRT" ? jumlahInput*isiPerCrt : jumlahInput;
+
+ let ref = db.collection("gudang").doc(user.uid).collection("stok").doc(code);
+
+ db.runTransaction(async t=>{
+   let doc = await t.get(ref);
+
+   let stokLama = doc.exists ? doc.data().stok : 0;
+   let stokBaru = jenis.value=="masuk"
+     ? stokLama + qty
+     : stokLama - qty;
+
+   if(stokBaru < 0){
+     alert("Stok tidak cukup");
+     return;
+   }
+
+   t.set(ref,{
+     nama:namaBarang,
+     stok:stokBaru,
+     isi:isiPerCrt
+   });
+
+   db.collection("gudang").doc(user.uid).collection("riwayat").add({
+     nama:namaBarang,
+     barcode:code,
+     jenis:jenis.value,
+     qty:qty,
+     waktu:new Date()
+   });
+
  });
 
- tampilStruk(total);
- cart=[];
- renderCart();
+ alert("Berhasil disimpan");
+
+ barcode.value="";
+ nama.value="";
+ jumlah.value="";
 }
 
-// STRUK
-function tampilStruk(total){
- let html="<h3 style='text-align:center'>SMART TOKO</h3><hr>";
+// LOAD STOK
+function loadStok(){
+ db.collection("gudang").doc(user.uid).collection("stok")
+ .onSnapshot(snap=>{
+   dataStok=[];
+   snap.forEach(d=>dataStok.push({...d.data(),barcode:d.id}));
+   renderStok();
+ });
+}
 
- cart.forEach(c=>{
-  let harga=c.harga_crt?c.harga_crt/(c.isi||1):c.harga;
-  let sub=c.qty*harga;
+// RENDER STOK + SEARCH
+function renderStok(){
+ let keyword=cari.value?cari.value.toLowerCase():"";
+ let html="";
 
-  html+=`${c.nama}<br>${c.qty} x Rp ${Math.round(harga)} = Rp ${Math.round(sub)}<br><br>`;
+ dataStok
+ .filter(x=>x.nama.toLowerCase().includes(keyword) || x.barcode.includes(keyword))
+ .forEach(data=>{
+
+   let crt=Math.floor(data.stok/(data.isi||1));
+   let pcs=data.stok%(data.isi||1);
+
+   html+=`
+   <div class="card">
+   <b>${data.nama}</b><br>
+   ${data.barcode}<br>
+   ${crt} CRT ${pcs} PCS
+   </div>`;
  });
 
- html+=`<hr><b>Total: Rp ${Math.round(total)}</b><br><center>Terima kasih 🙏</center>`;
-
- struk.style.display="block";
- struk.innerHTML=html;
+ listStok.innerHTML=html||"Tidak ditemukan";
 }
 
-// PRINT
-function printStruk(){
- let w=window.open("");
- w.document.write(struk.innerHTML);
- w.print();
+// LOAD RIWAYAT + LAPORAN
+function loadRiwayat(){
+ db.collection("gudang").doc(user.uid).collection("riwayat")
+ .orderBy("waktu","desc")
+ .onSnapshot(snap=>{
+   dataRiwayat=[];
+   snap.forEach(d=>dataRiwayat.push(d.data()));
+   renderRiwayat();
+ });
+}
+
+// RENDER RIWAYAT + LAPORAN
+function renderRiwayat(){
+ let masuk=0, keluar=0;
+ let html="";
+
+ dataRiwayat.forEach(x=>{
+   if(x.jenis=="masuk") masuk+=x.qty;
+   else keluar+=x.qty;
+
+   html+=`
+   <div class="card">
+   ${x.nama}<br>
+   ${x.jenis} : ${x.qty} pcs<br>
+   <small>${new Date(x.waktu.seconds*1000).toLocaleString()}</small>
+   </div>`;
+ });
+
+ laporan.innerHTML=`
+ <b>Laporan:</b><br>
+ Barang Masuk: ${masuk} pcs<br>
+ Barang Keluar: ${keluar} pcs
+ `;
+
+ listRiwayat.innerHTML=html||"Belum ada";
 }
 
 </script>
