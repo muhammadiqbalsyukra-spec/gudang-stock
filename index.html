@@ -6,108 +6,98 @@
 <title>Smart Toko</title>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://unpkg.com/html5-qrcode"></script>
 
 <style>
-body { font-family: Arial; padding:20px; }
-
-input, select, button { padding:8px; margin:5px; }
-
-table {
-  border-collapse: collapse;
-  width:100%;
-  margin-top:10px;
-}
-
-th, td {
-  border:1px solid #ddd;
-  padding:8px;
-}
-
-th { background:#f5f5f5; }
-
-tr:nth-child(even){ background:#fafafa; }
-
-.hidden { display:none; }
+body{margin:0;font-family:sans-serif;background:#f4f6f9;}
+header{background:#22c55e;color:#fff;padding:15px;text-align:center;}
+.container{padding:10px;padding-bottom:100px;max-width:600px;margin:auto;}
+.card{background:#fff;padding:12px;border-radius:12px;margin-bottom:10px;}
+input,select{width:100%;padding:10px;margin-bottom:8px;border-radius:8px;border:1px solid #ddd;}
+button{width:100%;padding:10px;border:none;border-radius:10px;margin-top:5px;}
+.btn{background:#22c55e;color:white;}
+.btn-del{background:red;color:white;}
+.navbar{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:space-around;background:#fff;padding:10px;}
+.page{display:none;}
+.page.active{display:block;}
 </style>
 </head>
 
 <body>
 
-<!-- LOGIN -->
-<div id="loginPage">
-  <h2>🔐 Login</h2>
-  <input id="user" placeholder="Username"><br>
-  <input id="pass" type="password" placeholder="Password"><br>
-  <button onclick="login()">Login</button>
+<header>🛒 Smart Toko</header>
+
+<div class="container">
+
+<div id="loginPage" class="card">
+<h3>Login</h3>
+<input id="email" placeholder="Email">
+<input id="password" type="password" placeholder="Password">
+<button class="btn" onclick="login()">Login</button>
+<button onclick="register()">Daftar</button>
 </div>
 
-<!-- APP -->
-<div id="appPage" class="hidden">
+<div id="app" style="display:none">
 
-<h2>📦 Input Barang</h2>
-<input id="kode" placeholder="Kode">
-<input id="nama" placeholder="Nama">
-<input id="harga" type="number" placeholder="Harga">
-<input id="jumlah" type="number" placeholder="Jumlah">
+<!-- KASIR -->
+<div id="pageKasir" class="page active">
+<input id="search" placeholder="Scan / ketik..." oninput="autoSearch()">
 
-<select id="satuan">
-<option value="pcs">PCS</option>
-<option value="crt">CRT</option>
+<button class="btn" onclick="startScannerKasir()">📷 Scan Kasir</button>
+<button class="btn-del" onclick="stopAllScanner()">Stop</button>
+
+<div id="readerKasir"></div>
+
+<div id="cartBox" class="card"></div>
+<div id="totalBox"></div>
+
+<select id="ukuranStruk">
+  <option value="58">58 mm</option>
+  <option value="72">72 mm</option>
+  <option value="80">80 mm</option>
 </select>
 
-<button onclick="tambah()">Masuk</button>
-<button onclick="keluar()">Keluar</button>
+<button class="btn" onclick="checkout()">Checkout</button>
 
-<hr>
-
-<h2>📋 Stok Barang</h2>
-
-<input id="search" placeholder="🔍 Cari..." onkeyup="renderData()">
-
-<br>
-
-<button onclick="printStok()">🖨️ Print / PDF</button>
-<button onclick="toggleHapus()">🗑️ Hapus</button>
-<button onclick="hapusTerpilih()" id="btnHapus" style="display:none;">✔ Hapus Dipilih</button>
-<button onclick="laporanHarian()">📊 Laporan Harian</button>
-
-<div id="areaPrint">
-<table id="tabel">
-<thead>
-<tr>
-<th></th>
-<th>No</th>
-<th>Kode</th>
-<th>Nama</th>
-<th>Stok</th>
-<th>Harga</th>
-</tr>
-</thead>
-
-<tbody id="list"></tbody>
-
-<tfoot>
-<tr>
-<td colspan="4" align="right"><b>Total</b></td>
-<td><b id="totalHarga">Rp 0</b></td>
-<td></td>
-</tr>
-</tfoot>
-
-</table>
+<div id="struk" class="card" style="display:none"></div>
+<button class="btn" onclick="printStruk()">Print</button>
 </div>
 
+<!-- PRODUK -->
+<div id="pageProduk" class="page">
+<div class="card">
+
+<button class="btn" onclick="startScannerProduk()">📷 Scan Barcode</button>
+<div id="readerProduk"></div>
+
+<input id="nama" placeholder="Nama barang">
+<input id="barcodeInput" placeholder="Barcode">
+
+<select id="satuan">
+<option value="PCS">PCS</option>
+<option value="CRT">CRT</option>
+</select>
+
+<input id="isi" type="number" placeholder="Isi per CRT (contoh 24)">
+<input id="stok" type="number" placeholder="Stok">
+<input id="harga" type="number" placeholder="Harga PCS">
+<input id="harga_crt" type="number" placeholder="Harga CRT">
+
+<button class="btn" onclick="tambahProduk()">Simpan</button>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="navbar">
+<button onclick="showPage('Kasir')">Kasir</button>
+<button onclick="showPage('Produk')">Produk</button>
 </div>
 
 <script>
-// LOGIN
-function login(){
-  if(user.value=="admin" && pass.value=="1234"){
-    loginPage.classList.add("hidden");
-    appPage.classList.remove("hidden");
-  } else alert("Salah");
-}
 
 const firebaseConfig = {
   apiKey: "AIzaSyD3YTIsKwI6yTwabSwI97ZxG4B81GoQbis",
@@ -117,174 +107,185 @@ const firebaseConfig = {
   messagingSenderId: "1083922080078",
   appId: "1:1083922080078:web:59a37f73bf8ec33ffd7e1f"
 };
+
 firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
+const auth=firebase.auth();
+const db=firebase.firestore();
 
-// FORMAT
-function rupiah(a){ return "Rp "+a.toLocaleString("id-ID"); }
+let user=null, produk=[], cart=[];
+let scannerKasir=null, scannerProduk=null;
+let lastScan="";
 
-// MODE HAPUS
-let modeHapus = false;
-
-function toggleHapus(){
-  modeHapus = !modeHapus;
-  btnHapus.style.display = modeHapus ? "inline-block" : "none";
-  renderData();
+function beep(){
+ new Audio("https://www.soundjay.com/button/beep-07.wav").play();
 }
 
-// AUTO ISI
-kode.onkeyup=async()=>{
-  let doc=await db.collection("barang").doc(kodeVal()).get();
-  if(doc.exists){
-    nama.value=doc.data().nama_barang;
-    harga.value=doc.data().harga;
-  }
-};
-
-// MASUK
-async function tambah(){
-  let k=kodeVal(), n=nama.value, h=+harga.value, j=+jumlah.value;
-  let t=(satuan.value=="crt")?j*24:j;
-
-  let ref=db.collection("barang").doc(k);
-  let doc=await ref.get();
-
-  if(doc.exists){
-    await ref.update({stok:(doc.data().stok||0)+t});
-  } else {
-    await ref.set({nama_barang:n,harga:h,stok:t});
-  }
-
-  await db.collection("transaksi").add({
-    tipe:"masuk",
-    jumlah:t,
-    tanggal:new Date()
-  });
+// AUTH
+function login(){
+ auth.signInWithEmailAndPassword(email.value,password.value)
+ .catch(e=>alert(e.message));
+}
+function register(){
+ auth.createUserWithEmailAndPassword(email.value,password.value)
+ .catch(e=>alert(e.message));
 }
 
-// KELUAR
-async function keluar(){
-  let k=kodeVal(), j=+jumlah.value;
-  let t=(satuan.value=="crt")?j*24:j;
-
-  let ref=db.collection("barang").doc(k);
-  let doc=await ref.get();
-
-  if(!doc.exists) return alert("Tidak ada");
-  let s=doc.data().stok;
-  if(s<t) return alert("Kurang");
-
-  await ref.update({stok:s-t});
-
-  await db.collection("transaksi").add({
-    tipe:"keluar",
-    jumlah:t,
-    tanggal:new Date()
-  });
-}
-
-// DATA
-let semuaData=[];
-db.collection("barang").onSnapshot(snap=>{
-  semuaData=[];
-  snap.forEach(d=>semuaData.push({id:d.id,...d.data()}));
-  renderData();
+auth.onAuthStateChanged(u=>{
+ if(u){
+  user=u;
+  loginPage.style.display="none";
+  app.style.display="block";
+  loadData();
+ }else{
+  loginPage.style.display="block";
+  app.style.display="none";
+ }
 });
 
-// RENDER
-function renderData(){
-  list.innerHTML="";
-  let key=search.value.toLowerCase();
-  let total=0, no=1;
-
-  semuaData.forEach(d=>{
-    if(d.nama_barang.toLowerCase().includes(key)||d.id.includes(key)){
-
-      let crt=Math.floor(d.stok/24);
-      let pcs=d.stok%24;
-
-      let stok = crt>0 ? (pcs>0 ? `${crt} crt + ${pcs} pcs` : `${crt} crt`) : `${pcs} pcs`;
-
-      total+= crt *d.harga;
-
-      list.innerHTML+=`
-      <tr>
-        <td>${modeHapus ? `<input type="checkbox" value="${d.id}">` : ""}</td>
-        <td>${no++}</td>
-        <td>${d.id}</td>
-        <td>${d.nama_barang}</td>
-        <td>${stok}</td>
-        <td>${rupiah(d.harga)}</td>
-      </tr>`;
-    }
-  });
-
-  totalHarga.innerHTML=rupiah(total);
+// LOAD
+function loadData(){
+ db.collection("users").doc(user.uid).collection("produk")
+ .onSnapshot(snap=>{
+  produk=[];
+  snap.forEach(d=>produk.push({...d.data(),id:d.id}));
+ });
 }
 
-// HAPUS
-function hapusTerpilih(){
-  let cek=document.querySelectorAll("input[type=checkbox]:checked");
-  cek.forEach(c=>{
-    db.collection("barang").doc(c.value).delete();
-  });
+// NAV
+function showPage(p){
+ document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));
+ document.getElementById("page"+p).classList.add("active");
+ stopAllScanner();
 }
 
-// PRINT (FIX TABEL)
-function printStok(){
-  const isi = document.getElementById("tabel").innerHTML;
-
-  const win = window.open('', '', 'width=900,height=700');
-  win.document.write(`
-    <html>
-    <head>
-    <style>
-    body{font-family:Arial;padding:20px}
-    table{border-collapse:collapse;width:100%}
-    th,td{border:1px solid black;padding:8px}
-    th{background:#eee}
-    </style>
-    </head>
-    <body>
-    <h2>STOK BARANG</h2>
-    <table>${isi}</table>
-    </body>
-    </html>
-  `);
-
-  win.document.close();
-  win.print();
+// SCANNER STOP
+function stopAllScanner(){
+ if(scannerKasir){scannerKasir.stop().catch(()=>{});scannerKasir=null;readerKasir.innerHTML="";}
+ if(scannerProduk){scannerProduk.stop().catch(()=>{});scannerProduk=null;readerProduk.innerHTML="";}
 }
 
-// LAPORAN HARIAN
-async function laporanHarian(){
-  const today = new Date();
-  today.setHours(0,0,0,0);
-
-  const snap = await db.collection("transaksi").get();
-
-  let masuk=0, keluar=0;
-
-  snap.forEach(doc=>{
-    let d=doc.data();
-    let tgl=d.tanggal.toDate();
-
-    if(tgl >= today){
-      if(d.tipe=="masuk") masuk+=d.jumlah;
-      if(d.tipe=="keluar") keluar+=d.jumlah;
-    }
-  });
-
-  alert(
-    "📊 LAPORAN HARI INI\n\n" +
-    "Masuk: "+masuk+"\n" +
-    "Keluar: "+keluar+"\n" +
-    "Sisa: lihat tabel"
-  );
+// SCANNER
+function startScannerKasir(){
+ stopAllScanner();
+ scannerKasir=new Html5Qrcode("readerKasir");
+ scannerKasir.start({ facingMode:"environment" },{ fps:10, qrbox:250 },text=>{
+  if(text===lastScan)return;
+  lastScan=text;
+  beep();
+  tambahCart(text);
+  setTimeout(()=>lastScan="",1500);
+ });
 }
 
-// HELPER
-function kodeVal(){ return kode.value.trim(); }
+function startScannerProduk(){
+ stopAllScanner();
+ scannerProduk=new Html5Qrcode("readerProduk");
+ scannerProduk.start({ facingMode:"environment" },{ fps:10, qrbox:250 },text=>{
+  barcodeInput.value=text;
+  stopAllScanner();
+ });
+}
+
+// 🔥 TAMBAH PRODUK FIX
+function tambahProduk(){
+ let isiPerCrt=parseInt(isi.value)||1;
+ let jumlah=parseInt(stok.value)||0;
+
+ let stokFinal = satuan.value=="CRT" ? jumlah*isiPerCrt : jumlah;
+
+ db.collection("users").doc(user.uid).collection("produk").add({
+  nama:nama.value,
+  barcode:barcodeInput.value,
+  stok:stokFinal,
+  harga:parseInt(harga.value)||0,
+  harga_crt:parseInt(harga_crt.value)||0,
+  isi:isiPerCrt
+ });
+
+ alert("Tersimpan");
+}
+
+// CART
+function tambahCart(code){
+ let p=produk.find(x=>x.barcode==code);
+ if(!p)return alert("Tidak ada");
+
+ let item=cart.find(x=>x.barcode==code);
+ if(item)item.qty++;
+ else cart.push({...p,qty:1});
+
+ renderCart();
+}
+
+// 🔥 FIX TOTAL
+function renderCart(){
+ let html="",total=0;
+
+ cart.forEach((c,i)=>{
+  let hargaPcs = c.harga_crt ? c.harga_crt/(c.isi||1) : c.harga;
+  let sub=c.qty*hargaPcs;
+  total+=sub;
+
+  html+=`${c.nama}<br>${c.qty} x Rp ${Math.round(hargaPcs)} = Rp ${Math.round(sub)}
+  <br><button onclick="hapus(${i})">Hapus</button><hr>`;
+ });
+
+ cartBox.innerHTML=html||"Kosong";
+ totalBox.innerHTML="<b>Total: Rp "+Math.round(total)+"</b>";
+}
+
+function hapus(i){
+ cart.splice(i,1);
+ renderCart();
+}
+
+function autoSearch(){
+ let code=search.value.trim();
+ if(produk.find(x=>x.barcode==code)){
+  tambahCart(code);
+  search.value="";
+ }
+}
+
+// CHECKOUT
+function checkout(){
+ if(cart.length==0)return;
+
+ let total=0;
+ cart.forEach(c=>{
+  let hargaPcs=c.harga_crt?c.harga_crt/(c.isi||1):c.harga;
+  total+=c.qty*hargaPcs;
+ });
+
+ tampilStruk(total);
+ cart=[];
+ renderCart();
+}
+
+// STRUK
+function tampilStruk(total){
+ let html="<h3 style='text-align:center'>SMART TOKO</h3><hr>";
+
+ cart.forEach(c=>{
+  let harga=c.harga_crt?c.harga_crt/(c.isi||1):c.harga;
+  let sub=c.qty*harga;
+
+  html+=`${c.nama}<br>${c.qty} x Rp ${Math.round(harga)} = Rp ${Math.round(sub)}<br><br>`;
+ });
+
+ html+=`<hr><b>Total: Rp ${Math.round(total)}</b><br><center>Terima kasih 🙏</center>`;
+
+ struk.style.display="block";
+ struk.innerHTML=html;
+}
+
+// PRINT
+function printStruk(){
+ let w=window.open("");
+ w.document.write(struk.innerHTML);
+ w.print();
+}
+
 </script>
 
 </body>
