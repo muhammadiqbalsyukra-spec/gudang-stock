@@ -121,10 +121,10 @@ db.collection("gudang").doc("main").collection("riwayat")
 
 // FORMAT RUPIAH
 function rupiah(angka){
- return "Rp " + angka.toLocaleString("id-ID");
+ return "Rp " + Math.round(angka).toLocaleString("id-ID");
 }
 
-// AUTO ISI
+// AUTO ISI BARANG
 function autoIsi(){
  let val = kode.value;
  let item = data.find(x=>x.id == val);
@@ -169,7 +169,7 @@ function simpan(jenis){
      harga:hargaVal
    });
 
-   // simpan riwayat
+   // SIMPAN RIWAYAT
    db.collection("gudang").doc("main").collection("riwayat").add({
      jenis:jenis,
      qty:qty,
@@ -184,17 +184,14 @@ function simpan(jenis){
  jumlah.value="";
 }
 
-// RENDER
+// RENDER TABEL
 function render(){
 
  let key=cari.value.trim().toLowerCase();
  let html="", no=1, total=0;
 
  data
- .filter(x=> 
-   x.nama.toLowerCase().includes(key) || 
-   x.id.toLowerCase().includes(key)
- )
+ .filter(x=>x.nama.toLowerCase().includes(key)||x.id.includes(key))
  .forEach(d=>{
 
    let isi=24;
@@ -203,7 +200,8 @@ function render(){
 
    let stokText=`${crt} crt + ${pcs} pcs`;
 
-   let nilai = crt * d.harga;
+   let hargaPcs = d.harga / isi;
+   let nilai = d.stok * hargaPcs;
 
    total += nilai;
 
@@ -223,16 +221,32 @@ function render(){
  totalHarga.innerText=rupiah(total);
 }
 
-// HAPUS
+// HAPUS AMAN
 function hapusDipilih(){
- let cek=document.querySelectorAll("#list input:checked");
+
+ let cek = document.querySelectorAll("#list input:checked");
+
+ if(cek.length==0){
+   alert("Pilih data dulu");
+   return;
+ }
+
+ let konfirmasi = prompt("Ketik HAPUS untuk melanjutkan");
+
+ if(konfirmasi !== "HAPUS"){
+   alert("Dibatalkan");
+   return;
+ }
+
  cek.forEach(c=>{
   db.collection("gudang").doc("main")
   .collection("stok").doc(c.value).delete();
  });
+
+ alert("Data berhasil dihapus");
 }
 
-// PRINT
+// PRINT RAPI
 function printData(){
 
  let rows=document.querySelectorAll("#list tr");
@@ -267,11 +281,10 @@ function printData(){
  w.print();
 }
 
-// LAPORAN HARIAN
+// LAPORAN HARIAN CRT + PCS
 function renderLaporan(){
 
  let hariIni = new Date().toDateString();
-
  let masuk=0, keluar=0;
 
  riwayat.forEach(x=>{
@@ -283,9 +296,17 @@ function renderLaporan(){
    }
  });
 
+ let isi=24;
+
+ let mCrt=Math.floor(masuk/isi);
+ let mPcs=masuk%isi;
+
+ let kCrt=Math.floor(keluar/isi);
+ let kPcs=keluar%isi;
+
  laporan.innerHTML=`
- Barang Masuk: ${masuk} pcs<br>
- Barang Keluar: ${keluar} pcs
+ Barang Masuk: ${mCrt} crt + ${mPcs} pcs<br>
+ Barang Keluar: ${kCrt} crt + ${kPcs} pcs
  `;
 }
 
