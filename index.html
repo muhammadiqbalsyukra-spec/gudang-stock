@@ -30,7 +30,7 @@ tfoot{background:#f1f5f9;font-weight:bold}
 <div class="card">
 <h3>Input Barang</h3>
 
-<input id="kode" placeholder="Kode Barang">
+<input id="kode" placeholder="Kode Barang" oninput="autoIsi()">
 <input id="nama" placeholder="Nama Barang">
 <input id="harga" placeholder="Harga / CRT">
 <input id="jumlah" placeholder="Jumlah">
@@ -79,6 +79,11 @@ tfoot{background:#f1f5f9;font-weight:bold}
 
 </div>
 
+<div class="card">
+<h3>📊 Laporan Hari Ini</h3>
+<div id="laporan"></div>
+</div>
+
 </div>
 
 <script>
@@ -96,8 +101,9 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
 let data = [];
+let riwayat = [];
 
-// LOAD DATA
+// LOAD STOK
 db.collection("gudang").doc("main").collection("stok")
 .onSnapshot(snap=>{
  data=[];
@@ -105,9 +111,27 @@ db.collection("gudang").doc("main").collection("stok")
  render();
 });
 
+// LOAD RIWAYAT
+db.collection("gudang").doc("main").collection("riwayat")
+.onSnapshot(snap=>{
+ riwayat=[];
+ snap.forEach(d=>riwayat.push(d.data()));
+ renderLaporan();
+});
+
 // FORMAT RUPIAH
 function rupiah(angka){
  return "Rp " + angka.toLocaleString("id-ID");
+}
+
+// AUTO ISI
+function autoIsi(){
+ let val = kode.value;
+ let item = data.find(x=>x.id == val);
+ if(item){
+   nama.value = item.nama;
+   harga.value = item.harga;
+ }
 }
 
 // SIMPAN
@@ -144,6 +168,14 @@ function simpan(jenis){
      stok:stokBaru,
      harga:hargaVal
    });
+
+   // simpan riwayat
+   db.collection("gudang").doc("main").collection("riwayat").add({
+     jenis:jenis,
+     qty:qty,
+     waktu:new Date()
+   });
+
  });
 
  kode.value="";
@@ -155,11 +187,14 @@ function simpan(jenis){
 // RENDER
 function render(){
 
- let key=cari.value.toLowerCase();
+ let key=cari.value.trim().toLowerCase();
  let html="", no=1, total=0;
 
  data
- .filter(x=>x.nama.toLowerCase().includes(key)||x.id.includes(key))
+ .filter(x=> 
+   x.nama.toLowerCase().includes(key) || 
+   x.id.toLowerCase().includes(key)
+ )
  .forEach(d=>{
 
    let isi=24;
@@ -199,9 +234,59 @@ function hapusDipilih(){
 
 // PRINT
 function printData(){
+
+ let rows=document.querySelectorAll("#list tr");
+
+ let html=`
+ <html><body>
+ <h3>Data Stok</h3>
+ <table border="1" style="border-collapse:collapse;width:100%">
+ <tr>
+ <th>No</th><th>Kode</th><th>Nama</th>
+ <th>Stok</th><th>Harga</th><th>Nilai</th>
+ </tr>
+ `;
+
+ rows.forEach(r=>{
+   let td=r.querySelectorAll("td");
+   html+=`
+   <tr>
+   <td>${td[1].innerText}</td>
+   <td>${td[2].innerText}</td>
+   <td>${td[3].innerText}</td>
+   <td>${td[4].innerText}</td>
+   <td>${td[5].innerText}</td>
+   <td>${td[6].innerText}</td>
+   </tr>`;
+ });
+
+ html+=`</table><h3>${totalHarga.innerText}</h3></body></html>`;
+
  let w=window.open("");
- w.document.write(document.querySelector("table").outerHTML);
+ w.document.write(html);
  w.print();
+}
+
+// LAPORAN HARIAN
+function renderLaporan(){
+
+ let hariIni = new Date().toDateString();
+
+ let masuk=0, keluar=0;
+
+ riwayat.forEach(x=>{
+   let tgl=new Date(x.waktu.seconds*1000).toDateString();
+
+   if(tgl==hariIni){
+     if(x.jenis=="masuk") masuk+=x.qty;
+     else keluar+=x.qty;
+   }
+ });
+
+ laporan.innerHTML=`
+ Barang Masuk: ${masuk} pcs<br>
+ Barang Keluar: ${keluar} pcs
+ `;
 }
 
 </script>
