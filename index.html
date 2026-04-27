@@ -8,109 +8,66 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-<script src="https://unpkg.com/html5-qrcode"></script>
 
 <style>
-body{margin:0;font-family:sans-serif;background:#f4f6f9;}
-header{background:#2563eb;color:#fff;padding:15px;text-align:center;}
-.container{padding:10px;padding-bottom:90px;max-width:700px;margin:auto;}
-.card{background:#fff;padding:12px;border-radius:12px;margin-bottom:10px;}
-input,select{width:100%;padding:10px;margin-bottom:8px;border-radius:8px;border:1px solid #ddd;}
-button{padding:10px;border:none;border-radius:10px;margin-top:5px;}
-.btn{background:#2563eb;color:white;width:100%;}
-.btn-red{background:#ef4444;color:white;}
-.btn-small{padding:6px 10px;font-size:12px;margin:2px;}
-.navbar{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:space-around;background:#fff;padding:10px;}
-.page{display:none;}
-.page.active{display:block;}
-table{width:100%;border-collapse:collapse;font-size:13px;}
-th,td{border:1px solid #ddd;padding:6px;text-align:center;}
-th{background:#e5e7eb;}
-tfoot td{font-weight:bold;}
-.top-actions{display:flex;gap:6px;margin-bottom:6px;}
-.top-actions button{flex:1;}
+body{font-family:sans-serif;background:#f5f5f5;margin:0}
+.container{max-width:900px;margin:auto;padding:10px}
+.card{background:#fff;padding:10px;margin-bottom:10px;border-radius:8px}
+input,select{padding:8px;margin:3px;border:1px solid #ccc;border-radius:5px}
+button{padding:8px 10px;border:none;border-radius:5px;cursor:pointer}
+.btn{background:#2563eb;color:#fff}
+.btn-red{background:red;color:#fff}
+table{width:100%;border-collapse:collapse;margin-top:10px}
+th,td{border:1px solid #ddd;padding:8px;text-align:left}
+th{background:#eee}
 </style>
 </head>
 
 <body>
 
-<header>📦 Gudang Stok</header>
-
 <div class="container">
 
-<!-- LOGIN -->
-<div id="loginPage" class="card">
-<h3>Login</h3>
-<input id="email" placeholder="Email">
-<input id="password" type="password" placeholder="Password">
-<button class="btn" onclick="login()">Login</button>
-<button class="btn" onclick="register()">Daftar</button>
-</div>
-
-<!-- APP -->
-<div id="app" style="display:none">
-
-<!-- INPUT -->
-<div id="pageInput" class="page active">
 <div class="card">
+<h3>Input Barang</h3>
 
-<button class="btn" onclick="startScanner()">📷 Scan Barcode</button>
-<div id="reader"></div>
-
-<input id="barcode" placeholder="Barcode">
-<input id="nama" placeholder="Nama barang">
-
-<select id="jenis">
-<option value="masuk">Barang Masuk</option>
-<option value="keluar">Barang Keluar</option>
-</select>
-
+<input id="kode" placeholder="Kode Barang">
+<input id="nama" placeholder="Nama Barang">
+<input id="harga" placeholder="Harga (PCS)">
+<input id="jumlah" placeholder="Jumlah">
 <select id="satuan">
 <option value="PCS">PCS</option>
 <option value="CRT">CRT</option>
 </select>
 
-<input id="isi" type="number" placeholder="Isi per CRT (contoh 24)">
-<input id="jumlah" type="number" placeholder="Jumlah">
-
-<!-- 🔥 Tambahan harga -->
-<input id="harga" type="number" placeholder="Harga PCS (opsional)">
-<input id="harga_crt" type="number" placeholder="Harga CRT (opsional)">
-
-<button class="btn" onclick="simpan()">Simpan</button>
+<button class="btn" onclick="simpan('masuk')">Barang Masuk</button>
+<button class="btn-red" onclick="simpan('keluar')">Barang Keluar</button>
 
 </div>
-</div>
 
-<!-- STOK -->
-<div id="pageStok" class="page">
+<div class="card">
+<h3>Stok Barang</h3>
 
-<input id="cari" placeholder="Cari barang..." oninput="renderStok()">
-
-<div class="top-actions">
-<button class="btn-small" onclick="printStok()">Print / PDF</button>
-<button class="btn-small btn-red" onclick="hapusDipilih()">Hapus Dipilih</button>
-</div>
+<input id="cari" placeholder="Cari barang..." oninput="render()">
+<button onclick="printData()">Print</button>
 
 <table>
 <thead>
 <tr>
-<th></th>
 <th>No</th>
 <th>Kode</th>
 <th>Nama</th>
 <th>Stok</th>
 <th>Harga</th>
-<th>Total</th>
+<th>Aksi</th>
 </tr>
 </thead>
 
-<tbody id="listStok"></tbody>
+<tbody id="list"></tbody>
 
 <tfoot>
 <tr>
-<td colspan="5">TOTAL NILAI</td>
-<td colspan="2" id="grandTotal">Rp 0</td>
+<td colspan="4"><b>Total Nilai Stok</b></td>
+<td colspan="2" id="totalHarga">Rp 0</td>
 </tr>
 </tfoot>
 
@@ -118,12 +75,6 @@ tfoot td{font-weight:bold;}
 
 </div>
 
-</div>
-</div>
-
-<div class="navbar">
-<button onclick="showPage('Input')">Input</button>
-<button onclick="showPage('Stok')">Stok</button>
 </div>
 
 <script>
@@ -138,158 +89,104 @@ const firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
-const auth=firebase.auth();
 const db=firebase.firestore();
 
-let user=null, dataStok=[];
-let scanner=null;
+let data=[];
 
-// AUTH
-function login(){
- auth.signInWithEmailAndPassword(email.value,password.value)
- .catch(e=>alert(e.message));
-}
-function register(){
- auth.createUserWithEmailAndPassword(email.value,password.value)
- .catch(e=>alert(e.message));
-}
-
-auth.onAuthStateChanged(u=>{
- if(u){
-  user=u;
-  loginPage.style.display="none";
-  app.style.display="block";
-  loadStok();
- }else{
-  loginPage.style.display="block";
-  app.style.display="none";
- }
+// LOAD DATA
+db.collection("gudang").doc("main").collection("stok")
+.onSnapshot(snap=>{
+ data=[];
+ snap.forEach(d=>data.push({...d.data(),id:d.id}));
+ render();
 });
 
-// NAV
-function showPage(p){
- document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));
- document.getElementById("page"+p).classList.add("active");
- stopScanner();
-}
+// SIMPAN
+function simpan(jenis){
 
-// SCANNER
-function startScanner(){
- stopScanner();
- scanner=new Html5Qrcode("reader");
- scanner.start({ facingMode:"environment" },{ fps:10, qrbox:250 },text=>{
-  barcode.value=text;
-  stopScanner();
- });
-}
-function stopScanner(){
- if(scanner){
-  scanner.stop().catch(()=>{});
-  scanner=null;
-  reader.innerHTML="";
- }
-}
+ let kodeVal=kode.value;
+ let namaVal=nama.value;
+ let hargaVal=parseInt(harga.value)||0;
+ let jumlahVal=parseInt(jumlah.value)||0;
 
-// 🔥 SIMPAN
-function simpan(){
- let code=barcode.value;
- let namaBarang=nama.value;
- let jumlahInput=parseInt(jumlah.value)||0;
- let isiPerCrt=parseInt(isi.value)||1;
-
- if(!code || !namaBarang || jumlahInput<=0){
-  alert("Lengkapi data");
+ if(!kodeVal||!namaVal||jumlahVal<=0){
+  alert("Isi lengkap");
   return;
  }
 
- let qty = satuan.value=="CRT" ? jumlahInput*isiPerCrt : jumlahInput;
+ let isi=24; // default CRT
+ let qty = satuan.value=="CRT" ? jumlahVal*isi : jumlahVal;
 
- let ref = db.collection("gudang").doc(user.uid).collection("stok").doc(code);
+ let ref=db.collection("gudang").doc("main").collection("stok").doc(kodeVal);
 
  db.runTransaction(async t=>{
-   let doc = await t.get(ref);
+   let doc=await t.get(ref);
+   let stokLama=doc.exists?doc.data().stok:0;
 
-   let stokLama = doc.exists ? doc.data().stok : 0;
-   let stokBaru = jenis.value=="masuk"
-     ? stokLama + qty
-     : stokLama - qty;
+   let stokBaru = jenis=="masuk" ? stokLama+qty : stokLama-qty;
 
-   if(stokBaru < 0){
-     alert("Stok tidak cukup");
+   if(stokBaru<0){
+     alert("Stok kurang");
      return;
    }
 
    t.set(ref,{
-     nama:namaBarang,
+     nama:namaVal,
      stok:stokBaru,
-     isi:isiPerCrt,
-     harga:parseInt(harga.value)||0,
-     harga_crt:parseInt(harga_crt.value)||0
+     harga:hargaVal
    });
  });
 
- alert("Tersimpan");
+ kode.value="";
+ nama.value="";
+ harga.value="";
+ jumlah.value="";
 }
 
-// LOAD
-function loadStok(){
- db.collection("gudang").doc(user.uid).collection("stok")
- .onSnapshot(snap=>{
-   dataStok=[];
-   snap.forEach(d=>dataStok.push({...d.data(),barcode:d.id}));
-   renderStok();
- });
-}
+// RENDER
+function render(){
 
-// 🔥 RENDER TABLE
-function renderStok(){
- let keyword=cari.value?cari.value.toLowerCase():"";
- let html="", no=1, grand=0;
+ let key=cari.value.toLowerCase();
+ let html="", no=1, total=0;
 
- dataStok
- .filter(x=>x.nama.toLowerCase().includes(keyword)||x.barcode.includes(keyword))
+ data
+ .filter(x=>x.nama.toLowerCase().includes(key)||x.id.includes(key))
  .forEach(d=>{
 
-   let isi=d.isi||1;
-   let crt=Math.floor(d.stok/isi);
-   let pcs=d.stok%isi;
+   let crt=Math.floor(d.stok/24);
+   let pcs=d.stok%24;
 
-   let stokText=crt>0?(pcs>0?`${crt} crt ${pcs} pcs`:`${crt} crt`):`${pcs} pcs`;
+   let stokText = `${d.stok} pcs (${crt} crt + ${pcs} pcs)`;
 
-   let hargaPcs=d.harga_crt?d.harga_crt/isi:d.harga;
-   let total=d.stok*hargaPcs;
-   grand+=total;
+   let sub=d.stok*d.harga;
+   total+=sub;
 
    html+=`
    <tr>
-   <td><input type="checkbox" value="${d.barcode}"></td>
    <td>${no++}</td>
-   <td>${d.barcode}</td>
+   <td>${d.id}</td>
    <td>${d.nama}</td>
    <td>${stokText}</td>
-   <td>Rp ${Math.round(hargaPcs)}</td>
-   <td>Rp ${Math.round(total)}</td>
+   <td>Rp ${d.harga}</td>
+   <td><button onclick="hapus('${d.id}')">Hapus</button></td>
    </tr>`;
  });
 
- listStok.innerHTML=html||"<tr><td colspan='7'>Kosong</td></tr>";
- grandTotal.innerText="Rp "+Math.round(grand);
+ list.innerHTML=html;
+ totalHarga.innerText="Rp "+total;
 }
 
-// 🔥 HAPUS
-function hapusDipilih(){
- let cek=document.querySelectorAll("#listStok input:checked");
- cek.forEach(c=>{
-  db.collection("gudang").doc(user.uid)
-  .collection("stok").doc(c.value).delete();
- });
+// HAPUS
+function hapus(id){
+ if(confirm("Hapus barang?")){
+  db.collection("gudang").doc("main").collection("stok").doc(id).delete();
+ }
 }
 
-// 🔥 PRINT
-function printStok(){
- let isi=document.querySelector("table").outerHTML;
+// PRINT
+function printData(){
  let w=window.open("");
- w.document.write("<html><body>"+isi+"</body></html>");
+ w.document.write(document.querySelector("table").outerHTML);
  w.print();
 }
 
