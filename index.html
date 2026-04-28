@@ -2,25 +2,24 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<title>Gudang Stok</title>
+<title>Gudang Pro</title>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
 <style>
-body{font-family:sans-serif;background:#f5f5f5;margin:0}
+body{font-family:sans-serif;background:#f1f5f9;margin:0}
 .container{max-width:900px;margin:auto;padding:10px}
-.card{background:#fff;padding:12px;margin-bottom:10px;border-radius:10px}
-input,select{padding:8px;margin:4px;border:1px solid #ccc;border-radius:6px;width:100%}
-button{padding:8px 10px;border:none;border-radius:6px;cursor:pointer}
+.card{background:#fff;padding:12px;margin-bottom:10px;border-radius:10px;box-shadow:0 2px 5px rgba(0,0,0,0.1)}
+input,select{padding:8px;margin:4px 0;border:1px solid #ccc;border-radius:6px;width:100%}
+button{padding:8px;border:none;border-radius:6px;cursor:pointer}
 .btn{background:#2563eb;color:#fff}
-.btn-red{background:red;color:#fff}
+.btn-red{background:#dc2626;color:#fff}
 
-table{width:100%;border-collapse:collapse;font-size:14px}
-th,td{border:1px solid #ccc;padding:8px}
-th{background:#dbeafe}
-tfoot{background:#f1f5f9;font-weight:bold}
+table{width:100%;border-collapse:collapse}
+th,td{border:1px solid #ccc;padding:8px;font-size:14px}
+th{background:#e0f2fe}
 </style>
 </head>
 
@@ -28,26 +27,24 @@ tfoot{background:#f1f5f9;font-weight:bold}
 
 <div class="container">
 
-<!-- LOGIN -->
 <div id="loginBox" class="card">
-<h3>Login / Daftar</h3>
+<h3>Login</h3>
 <input id="email" placeholder="Email">
 <input id="password" type="password" placeholder="Password">
 <button class="btn" onclick="login()">Login</button>
 <button onclick="register()">Daftar</button>
 </div>
 
-<!-- APP -->
 <div id="app" style="display:none">
 
 <div class="card">
 <button onclick="logout()" style="float:right">Logout</button>
 <h3>Input Barang</h3>
 
-<input id="kode" placeholder="Kode Barang" oninput="autoIsi()">
-<input id="nama" placeholder="Nama Barang">
-<input id="harga" placeholder="Harga / CRT">
-<input id="isi" placeholder="Isi / CRT (contoh 24)">
+<input id="kode" placeholder="Kode" oninput="autoIsi()">
+<input id="nama" placeholder="Nama">
+<input id="harga" placeholder="Harga/CRT">
+<input id="isi" placeholder="Isi/CRT (24)">
 <input id="jumlah" placeholder="Jumlah">
 
 <select id="satuan">
@@ -55,49 +52,29 @@ tfoot{background:#f1f5f9;font-weight:bold}
 <option value="CRT">CRT</option>
 </select>
 
-<button class="btn" onclick="simpan('masuk')">Barang Masuk</button>
-<button class="btn-red" onclick="simpan('keluar')">Barang Keluar</button>
-
+<button class="btn" onclick="simpan('masuk')">Masuk</button>
+<button class="btn-red" onclick="simpan('keluar')">Keluar</button>
 </div>
 
 <div class="card">
-<h3>Stok Barang</h3>
-
-<input id="cari" placeholder="Cari barang..." oninput="render()">
-<button onclick="resetCari()">Reset</button>
-
-<div style="display:flex;gap:10px;margin:10px 0">
-<button onclick="printData()">Print</button>
-<button class="btn-red" onclick="hapusDipilih()">Hapus Dipilih</button>
-</div>
+<h3>Stok</h3>
+<input id="cari" placeholder="Cari..." oninput="render()">
 
 <table>
 <thead>
 <tr>
-<th></th>
-<th>No</th>
-<th>Kode</th>
-<th>Nama</th>
-<th>Stok</th>
-<th>Harga/CRT</th>
-<th>Nilai</th>
+<th>No</th><th>Kode</th><th>Nama</th><th>Stok</th><th>Harga</th><th>Nilai</th>
 </tr>
 </thead>
-
 <tbody id="list"></tbody>
-
 <tfoot>
-<tr>
-<td colspan="6">Total Nilai Stok</td>
-<td id="totalHarga">Rp 0</td>
-</tr>
+<tr><td colspan="5">Total</td><td id="totalHarga">Rp 0</td></tr>
 </tfoot>
 </table>
-
 </div>
 
 <div class="card">
-<h3>📊 Laporan Hari Ini</h3>
+<h3>Laporan Hari Ini</h3>
 <div id="laporan"></div>
 </div>
 
@@ -117,12 +94,10 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 
-const auth = firebase.auth();
-const db = firebase.firestore();
+const auth=firebase.auth();
+const db=firebase.firestore();
 
-let user=null;
-let data=[];
-let riwayat=[];
+let user=null,data=[],riwayat=[];
 
 // LOGIN
 function login(){
@@ -136,55 +111,46 @@ function register(){
  .catch(e=>alert(e.message));
 }
 
-// LOGOUT
-function logout(){
- auth.signOut();
-}
-
 // AUTH
 auth.onAuthStateChanged(u=>{
  if(u){
-   user=u;
-   loginBox.style.display="none";
-   app.style.display="block";
-   loadData();
+  user=u;
+  loginBox.style.display="none";
+  app.style.display="block";
+  load();
  }else{
-   loginBox.style.display="block";
-   app.style.display="none";
+  loginBox.style.display="block";
+  app.style.display="none";
  }
 });
 
-// LOAD
-function loadData(){
+function logout(){auth.signOut();}
+
+// LOAD DATA
+function load(){
 
  db.collection("gudang").doc(user.uid).collection("stok")
- .onSnapshot(snap=>{
+ .onSnapshot(s=>{
   data=[];
-  snap.forEach(d=>data.push({...d.data(),id:d.id}));
+  s.forEach(d=>data.push({...d.data(),id:d.id}));
   render();
  });
 
  db.collection("gudang").doc(user.uid).collection("riwayat")
- .onSnapshot(snap=>{
+ .onSnapshot(s=>{
   riwayat=[];
-  snap.forEach(d=>riwayat.push(d.data()));
+  s.forEach(d=>riwayat.push(d.data()));
   renderLaporan();
  });
-
-}
-
-// FORMAT
-function rupiah(x){
- return "Rp " + Math.round(x).toLocaleString("id-ID");
 }
 
 // AUTO ISI
 function autoIsi(){
  let item=data.find(x=>x.id==kode.value);
  if(item){
-  nama.value=item.nama||"";
-  harga.value=item.harga||0;
-  isi.value=item.isi||24;
+  nama.value=item.nama;
+  harga.value=item.harga;
+  isi.value=item.isi;
  }
 }
 
@@ -194,13 +160,13 @@ function simpan(jenis){
  let isiVal=parseInt(isi.value)||24;
  let jumlahVal=parseInt(jumlah.value)||0;
 
- let itemLama=data.find(x=>x.id==kode.value);
+ let lama=data.find(x=>x.id==kode.value);
 
- let namaVal=nama.value|| (itemLama?itemLama.nama:"");
- let hargaVal=parseInt(harga.value)|| (itemLama?itemLama.harga:0);
+ let namaVal=nama.value.trim()||(lama?lama.nama:"");
+ let hargaVal=parseInt(harga.value)||(lama?lama.harga:0);
 
  if(!kode.value||!namaVal||hargaVal<=0||jumlahVal<=0){
-  alert("Data belum lengkap");
+  alert("Data salah");
   return;
  }
 
@@ -210,29 +176,21 @@ function simpan(jenis){
 
  db.runTransaction(async t=>{
   let doc=await t.get(ref);
-  let stokLama=doc.exists?doc.data().stok:0;
+  let stok=doc.exists?doc.data().stok:0;
 
-  let stokBaru=jenis=="masuk"?stokLama+qty:stokLama-qty;
+  let baru=jenis=="masuk"?stok+qty:stok-qty;
 
-  if(stokBaru<0){
-   alert("Stok tidak cukup");
-   return;
-  }
+  if(baru<0){alert("Stok kurang");return;}
 
-  t.set(ref,{
-    nama:namaVal,
-    stok:stokBaru,
-    harga:hargaVal,
-    isi:isiVal
-  });
+  t.set(ref,{nama:namaVal,stok:baru,harga:hargaVal,isi:isiVal});
 
   db.collection("gudang").doc(user.uid).collection("riwayat").add({
-    kode:kode.value,
-    nama:namaVal,
-    jenis:jenis,
-    qty:qty,
-    isi:isiVal,
-    waktu:new Date()
+   kode:kode.value,
+   nama:namaVal,
+   jenis,
+   qty,
+   isi:isiVal,
+   waktu:firebase.firestore.FieldValue.serverTimestamp()
   });
 
  });
@@ -240,16 +198,20 @@ function simpan(jenis){
  kode.value="";nama.value="";harga.value="";jumlah.value="";isi.value="";
 }
 
+// FORMAT
+function rp(x){return "Rp "+Math.round(x).toLocaleString("id-ID");}
+
 // RENDER
 function render(){
+
  let key=cari.value.toLowerCase();
  let html="",total=0,no=1;
 
  data.filter(x=>!key||x.nama.toLowerCase().includes(key)||x.id.includes(key))
  .forEach(d=>{
 
-  let isi=Number(d.isi)||24;
-  let harga=Number(d.harga)||0;
+  let isi=d.isi||24;
+  let harga=d.harga||0;
 
   let crt=Math.floor(d.stok/isi);
   let pcs=d.stok%isi;
@@ -260,47 +222,20 @@ function render(){
 
   html+=`
   <tr>
-  <td><input type="checkbox" value="${d.id}"></td>
   <td>${no++}</td>
   <td>${d.id}</td>
   <td>${d.nama}</td>
   <td>${crt} crt + ${pcs} pcs</td>
-  <td>${rupiah(harga)}</td>
-  <td>${rupiah(nilai)}</td>
+  <td>${rp(harga)}</td>
+  <td>${rp(nilai)}</td>
   </tr>`;
  });
 
  list.innerHTML=html;
- totalHarga.innerText=rupiah(total);
+ totalHarga.innerText=rp(total);
 }
 
-// RESET
-function resetCari(){
- cari.value="";
- render();
-}
-
-// HAPUS
-function hapusDipilih(){
- let cek=document.querySelectorAll("#list input:checked");
- if(cek.length==0)return alert("Pilih data");
-
- if(prompt("Ketik HAPUS")!="HAPUS")return;
-
- cek.forEach(c=>{
-  db.collection("gudang").doc(user.uid)
-  .collection("stok").doc(c.value).delete();
- });
-}
-
-// PRINT
-function printData(){
- let w=window.open("");
- w.document.write(document.querySelector("table").outerHTML);
- w.print();
-}
-
-// 🔥 LAPORAN FIX TOTAL
+// LAPORAN
 function renderLaporan(){
 
  let today=new Date();
@@ -310,20 +245,10 @@ function renderLaporan(){
 
  riwayat.forEach(x=>{
 
-  let waktu=x.waktu?.seconds
-   ? new Date(x.waktu.seconds*1000)
-   : new Date(x.waktu);
+  let waktu=x.waktu?.toDate?x.waktu.toDate():new Date(x.waktu);
+  if(waktu<today)return;
 
-  if(waktu < today) return;
-
-  if(!map[x.kode]){
-    map[x.kode]={
-      nama:x.nama||"-",
-      masuk:0,
-      keluar:0,
-      isi:Number(x.isi)||24
-    };
-  }
+  if(!map[x.kode]) map[x.kode]={nama:x.nama,masuk:0,keluar:0,isi:x.isi||24};
 
   if(x.jenis=="masuk") map[x.kode].masuk+=x.qty;
   else map[x.kode].keluar+=x.qty;
@@ -333,24 +258,17 @@ function renderLaporan(){
  let html="";
 
  Object.values(map).forEach(d=>{
+  let m=Math.floor(d.masuk/d.isi),mp=d.masuk%d.isi;
+  let k=Math.floor(d.keluar/d.isi),kp=d.keluar%d.isi;
 
-  let isi=d.isi;
-
-  let mCrt=Math.floor(d.masuk/isi);
-  let mPcs=d.masuk%isi;
-
-  let kCrt=Math.floor(d.keluar/isi);
-  let kPcs=d.keluar%isi;
-
-  html+=`
-  <div style="padding:8px;border-bottom:1px solid #ddd">
+  html+=`<div>
   <b>${d.nama}</b><br>
-  📥 Masuk: ${mCrt} crt + ${mPcs} pcs<br>
-  📤 Keluar: ${kCrt} crt + ${kPcs} pcs
-  </div>`;
+  Masuk: ${m} crt + ${mp} pcs<br>
+  Keluar: ${k} crt + ${kp} pcs
+  </div><hr>`;
  });
 
- laporan.innerHTML=html||"Belum ada transaksi hari ini";
+ laporan.innerHTML=html||"Belum ada transaksi";
 }
 
 </script>
