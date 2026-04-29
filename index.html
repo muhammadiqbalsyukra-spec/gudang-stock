@@ -15,11 +15,34 @@ body{font-family:'Segoe UI',sans-serif;background:#eef2f7;margin:0}
 button{padding:10px;border:none;border-radius:8px;cursor:pointer;font-weight:600}
 .btn{background:#2563eb;color:#fff}
 .btn-red{background:#dc2626;color:#fff}
-input,select{padding:10px;margin:6px 0;border:1px solid #ddd;border-radius:8px;width:100%}
-table{width:100%;border-collapse:collapse;margin-top:10px}
-th,td{padding:10px;text-align:center}
-th{background:#2563eb;color:#fff}
-tr:nth-child(even){background:#f8fafc}
+
+input,select{
+  padding:10px;
+  margin:6px 0;
+  border:1px solid #ddd;
+  border-radius:8px;
+  width:100%;
+}
+
+/* TABEL RAPI */
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:10px;
+  background:#fff;
+}
+th,td{
+  border:1px solid #ddd;
+  padding:10px;
+  text-align:center;
+}
+th{
+  background:#2563eb;
+  color:#fff;
+}
+tr:hover{
+  background:#f1f5f9;
+}
 </style>
 </head>
 
@@ -67,7 +90,7 @@ tr:nth-child(even){background:#f8fafc}
 <input id="cari" placeholder="Cari..." oninput="render()">
 
 <button onclick="printStok()">Print</button>
-<button class="btn-red" onclick="hapusDipilih()">Hapus</button>
+<button class="btn-red" onclick="hapusDipilih()">Nonaktifkan</button>
 
 <table id="tabelStok">
 <thead>
@@ -107,12 +130,11 @@ const firebaseConfig = {
   messagingSenderId: "1083922080078",
   appId: "1:1083922080078:web:59a37f73bf8ec33ffd7e1f"
 };
-
 firebase.initializeApp(firebaseConfig);
 const auth=firebase.auth();
 const db=firebase.firestore();
 
-let user=null,data=[],riwayat=[];
+let user=null,data=[];
 
 function login(){
  auth.signInWithEmailAndPassword(email.value,password.value);
@@ -234,10 +256,65 @@ function hapusDipilih(){
  });
 }
 
+/* PRINT KHUSUS */
 function printStok(){
- let clone=tabelStok.cloneNode(true);
- let w=window.open("");
- w.document.write("<h3>Data Stok</h3>"+clone.outerHTML);
+
+ let rows = document.querySelectorAll("#list tr");
+
+ let html = `
+ <h3 style="text-align:center">Data Stok Barang</h3>
+ <table border="1" style="width:100%;border-collapse:collapse;text-align:center">
+ <thead>
+ <tr>
+ <th>No</th>
+ <th>Kode</th>
+ <th>Nama</th>
+ <th>Stok</th>
+ <th>Harga</th>
+ <th>Nilai</th>
+ </tr>
+ </thead>
+ <tbody>
+ `;
+
+ let no = 1;
+ let total = 0;
+
+ rows.forEach(r=>{
+   let td = r.querySelectorAll("td");
+
+   let kode = td[2].innerText;
+   let nama = td[3].innerText;
+   let stok = td[4].innerText;
+   let harga = td[5].innerText;
+   let nilai = td[6].innerText;
+
+   total += parseInt(nilai.replace(/[^\d]/g,"")) || 0;
+
+   html += `
+   <tr>
+   <td>${no++}</td>
+   <td>${kode}</td>
+   <td>${nama}</td>
+   <td>${stok}</td>
+   <td>${harga}</td>
+   <td>${nilai}</td>
+   </tr>`;
+ });
+
+ html += `
+ </tbody>
+ <tfoot>
+ <tr>
+ <td colspan="5"><b>Total</b></td>
+ <td><b>Rp ${total.toLocaleString("id-ID")}</b></td>
+ </tr>
+ </tfoot>
+ </table>
+ `;
+
+ let w = window.open("");
+ w.document.write(html);
  w.print();
 }
 
