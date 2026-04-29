@@ -67,19 +67,19 @@ tr:nth-child(even){background:#f8fafc}
 <input id="cari" placeholder="Cari..." oninput="render()">
 
 <button onclick="printStok()">Print</button>
-<button class="btn-red" onclick="hapusDipilih()">Nonaktifkan</button>
+<button class="btn-red" onclick="hapusDipilih()">Hapus</button>
 
 <table id="tabelStok">
 <thead>
 <tr>
 <th></th>
-<th>No</th><th>Kode</th><th>Nama</th><th>Stok</th><th>Harga</th><th>Nilai</th><th>Aksi</th>
+<th>No</th><th>Kode</th><th>Nama</th><th>Stok</th><th>Harga</th><th>Nilai</th>
 </tr>
 </thead>
 <tbody id="list"></tbody>
 <tfoot>
 <tr>
-<td colspan="7">Total</td>
+<td colspan="6">Total</td>
 <td id="totalHarga">Rp 0</td>
 </tr>
 </tfoot>
@@ -112,7 +112,7 @@ firebase.initializeApp(firebaseConfig);
 const auth=firebase.auth();
 const db=firebase.firestore();
 
-let user=null,data=[];
+let user=null,data=[],riwayat=[];
 
 function login(){
  auth.signInWithEmailAndPassword(email.value,password.value);
@@ -149,7 +149,7 @@ function showPage(p){
 }
 
 function autoIsi(){
- let item=data.find(x=>String(x.id)===String(kode.value));
+ let item=data.find(x=>x.id==kode.value);
  if(item){
   nama.value=item.nama;
   harga.value=item.harga;
@@ -157,7 +157,6 @@ function autoIsi(){
  }
 }
 
-// SIMPAN
 function simpan(jenis){
  let isiVal=parseInt(isi.value)||24;
  let jumlahVal=parseInt(jumlah.value)||0;
@@ -194,12 +193,13 @@ function simpan(jenis){
 
 function rp(x){return "Rp "+Math.round(x).toLocaleString("id-ID");}
 
-// RENDER
 function render(){
  let key=cari.value.toLowerCase();
  let html="",total=0,no=1;
 
- data.filter(x=> (x.aktif!==false) &&
+ data.filter(x=> 
+ (x.aktif!==false) &&
+ x.stok > 0 &&
  (!key || x.nama.toLowerCase().includes(key) || x.id.includes(key))
  )
  .forEach(d=>{
@@ -219,7 +219,6 @@ function render(){
   <td>${crt} crt + ${pcs} pcs</td>
   <td>${rp(harga)}</td>
   <td>${rp(nilai)}</td>
-  <td><button onclick="editBarang('${d.id}')">Edit</button></td>
   </tr>`;
  });
 
@@ -227,26 +226,6 @@ function render(){
  totalHarga.innerText=rp(total);
 }
 
-// EDIT (FIX GLOBAL)
-function editBarang(id){
- console.log("Edit:",id);
- let item=data.find(x=>String(x.id)===String(id));
-
- if(!item){
-  alert("Data tidak ditemukan");
-  return;
- }
-
- kode.value=item.id||"";
- nama.value=item.nama||"";
- harga.value=item.harga||"";
- isi.value=item.isi||"";
-}
-
-// WAJIB AGAR ONCLICK JALAN
-window.editBarang = editBarang;
-
-// SOFT DELETE
 function hapusDipilih(){
  document.querySelectorAll("#list input:checked").forEach(c=>{
   db.collection("gudang").doc(user.uid)
