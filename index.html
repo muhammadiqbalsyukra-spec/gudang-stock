@@ -24,25 +24,18 @@ input,select{
   width:100%;
 }
 
-/* TABEL RAPI */
 table{
   width:100%;
   border-collapse:collapse;
   margin-top:10px;
-  background:#fff;
 }
 th,td{
   border:1px solid #ddd;
   padding:10px;
   text-align:center;
 }
-th{
-  background:#2563eb;
-  color:#fff;
-}
-tr:hover{
-  background:#f1f5f9;
-}
+th{background:#2563eb;color:#fff;}
+tr:hover{background:#f1f5f9;}
 </style>
 </head>
 
@@ -65,6 +58,7 @@ tr:hover{
 <button onclick="logout()" style="float:right">Logout</button>
 </div>
 
+<!-- ================= STOK ================= -->
 <div id="pageStok">
 
 <div class="card">
@@ -92,7 +86,7 @@ tr:hover{
 <button onclick="printStok()">Print</button>
 <button class="btn-red" onclick="hapusDipilih()">Nonaktifkan</button>
 
-<table id="tabelStok">
+<table>
 <thead>
 <tr>
 <th></th>
@@ -110,9 +104,11 @@ tr:hover{
 </div>
 </div>
 
+<!-- ================= LAPORAN ================= -->
 <div id="pageLaporan" style="display:none">
 <div class="card">
 <h3>Laporan</h3>
+<input type="date" id="filterTanggal" onchange="loadLaporan()">
 <div id="laporan"></div>
 </div>
 </div>
@@ -135,13 +131,11 @@ const auth=firebase.auth();
 const db=firebase.firestore();
 
 let user=null,data=[];
+let unsubLaporan=null;
 
-function login(){
- auth.signInWithEmailAndPassword(email.value,password.value);
-}
-function register(){
- auth.createUserWithEmailAndPassword(email.value,password.value);
-}
+/* AUTH */
+function login(){auth.signInWithEmailAndPassword(email.value,password.value);}
+function register(){auth.createUserWithEmailAndPassword(email.value,password.value);}
 function logout(){auth.signOut();}
 
 auth.onAuthStateChanged(u=>{
@@ -156,6 +150,7 @@ auth.onAuthStateChanged(u=>{
  }
 });
 
+/* LOAD STOK */
 function load(){
  db.collection("gudang").doc(user.uid).collection("stok")
  .onSnapshot(s=>{
@@ -165,11 +160,17 @@ function load(){
  });
 }
 
+/* NAV */
 function showPage(p){
  pageStok.style.display=p=="stok"?"block":"none";
  pageLaporan.style.display=p=="laporan"?"block":"none";
+
+ if(p=="laporan"){
+   loadLaporan();
+ }
 }
 
+/* AUTO ISI */
 function autoIsi(){
  let item=data.find(x=>x.id==kode.value);
  if(item){
@@ -179,7 +180,9 @@ function autoIsi(){
  }
 }
 
-function simpan(jenis){
+/* SIMPAN */
+async function simpan(jenis){
+
  let isiVal=parseInt(isi.value)||24;
  let jumlahVal=parseInt(jumlah.value)||0;
 
@@ -192,14 +195,17 @@ function simpan(jenis){
  }
 
  let qty=satuan.value=="CRT"?jumlahVal*isiVal:jumlahVal;
+
  let ref=db.collection("gudang").doc(user.uid).collection("stok").doc(kode.value);
 
- db.runTransaction(async t=>{
+ try{
+ await db.runTransaction(async t=>{
   let doc=await t.get(ref);
   let stok=doc.exists?doc.data().stok:0;
+
   let baru=jenis=="masuk"?stok+qty:stok-qty;
 
-  if(baru<0){alert("Stok kurang");return;}
+  if(baru<0) throw "Stok kurang";
 
   t.set(ref,{
     nama:namaVal,
@@ -210,11 +216,32 @@ function simpan(jenis){
   });
  });
 
+ // SIMPAN LAPORAN
+ let today = new Date().toISOString().split("T")[0];
+
+ await db.collection("gudang").doc(user.uid)
+ .collection("laporan")
+ .add({
+   kode:kode.value,
+   nama:namaVal,
+   jenis:jenis,
+   jumlah:qty,
+   harga:hargaVal,
+   tanggal:today,
+   waktu:new Date()
+ });
+
+ }catch(e){
+  alert(e);
+ }
+
  kode.value="";nama.value="";harga.value="";jumlah.value="";isi.value="";
 }
 
+/* FORMAT */
 function rp(x){return "Rp "+Math.round(x).toLocaleString("id-ID");}
 
+/* RENDER STOK */
 function render(){
  let key=cari.value.toLowerCase();
  let html="",total=0,no=1;
@@ -248,6 +275,7 @@ function render(){
  totalHarga.innerText=rp(total);
 }
 
+/* HAPUS */
 function hapusDipilih(){
  document.querySelectorAll("#list input:checked").forEach(c=>{
   db.collection("gudang").doc(user.uid)
@@ -256,65 +284,47 @@ function hapusDipilih(){
  });
 }
 
-/* PRINT KHUSUS */
-function printStok(){
+/* LAPORAN */
+function loadLaporan(){
 
- let rows = document.querySelectorAll("#list tr");
+ if(unsubLaporan) unsubLaporan();
 
- let html = `
- <h3 style="text-align:center">Data Stok Barang</h3>
- <table border="1" style="width:100%;border-collapse:collapse;text-align:center">
- <thead>
- <tr>
- <th>No</th>
- <th>Kode</th>
- <th>Nama</th>
- <th>Stok</th>
- <th>Harga</th>
- <th>Nilai</th>
- </tr>
- </thead>
- <tbody>
- `;
+ let tgl = filterTanggal.value;
 
- let no = 1;
- let total = 0;
+ let ref = db.collection("gudang")
+ .doc(user.uid)
+ .collection("laporan")
+ .orderBy("waktu","desc");
 
- rows.forEach(r=>{
-   let td = r.querySelectorAll("td");
+ unsubLaporan = ref.onSnapshot(s=>{
 
-   let kode = td[2].innerText;
-   let nama = td[3].innerText;
-   let stok = td[4].innerText;
-   let harga = td[5].innerText;
-   let nilai = td[6].innerText;
+ let html="<table><tr><th>Tanggal</th><th>Kode</th><th>Nama</th><th>Jenis</th><th>Jumlah</th></tr>";
 
-   total += parseInt(nilai.replace(/[^\d]/g,"")) || 0;
+ s.forEach(d=>{
+  let x=d.data();
 
-   html += `
-   <tr>
-   <td>${no++}</td>
-   <td>${kode}</td>
-   <td>${nama}</td>
-   <td>${stok}</td>
-   <td>${harga}</td>
-   <td>${nilai}</td>
-   </tr>`;
+  if(tgl && x.tanggal!==tgl) return;
+
+  html+=`
+  <tr>
+  <td>${x.tanggal}</td>
+  <td>${x.kode}</td>
+  <td>${x.nama}</td>
+  <td>${x.jenis}</td>
+  <td>${x.jumlah}</td>
+  </tr>`;
  });
 
- html += `
- </tbody>
- <tfoot>
- <tr>
- <td colspan="5"><b>Total</b></td>
- <td><b>Rp ${total.toLocaleString("id-ID")}</b></td>
- </tr>
- </tfoot>
- </table>
- `;
+ html+="</table>";
+ laporan.innerHTML=html;
 
+ });
+}
+
+/* PRINT */
+function printStok(){
  let w = window.open("");
- w.document.write(html);
+ w.document.write(document.querySelector("table").outerHTML);
  w.print();
 }
 
