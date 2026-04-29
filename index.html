@@ -2,26 +2,81 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<title>Stok Gudang </title>
+<title>Stok Gudang</title>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
 <style>
-body{font-family:sans-serif;background:#f1f5f9;margin:0}
-.container{max-width:900px;margin:auto;padding:10px}
-.card{background:#fff;padding:12px;margin-bottom:10px;border-radius:10px}
+body{
+  font-family:'Segoe UI',sans-serif;
+  background:#eef2f7;
+  margin:0;
+}
+.container{
+  max-width:1000px;
+  margin:auto;
+  padding:15px;
+}
+.card{
+  background:#fff;
+  padding:15px;
+  margin-bottom:15px;
+  border-radius:12px;
+  box-shadow:0 4px 12px rgba(0,0,0,0.05);
+}
+button{
+  padding:10px 14px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  font-weight:600;
+}
+.btn{background:#2563eb;color:#fff;}
+.btn:hover{background:#1e40af;}
+.btn-red{background:#dc2626;color:#fff;}
+.btn-red:hover{background:#991b1b;}
 
-button{padding:8px;border:none;border-radius:6px;cursor:pointer}
-.btn{background:#2563eb;color:#fff}
-.btn-red{background:#dc2626;color:#fff}
+input,select{
+  padding:10px;
+  margin:6px 0;
+  border:1px solid #ddd;
+  border-radius:8px;
+  width:100%;
+}
 
-input,select{padding:8px;margin:4px 0;border:1px solid #ccc;border-radius:6px;width:100%}
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:10px;
+}
+th,td{
+  padding:10px;
+  text-align:center;
+}
+th{
+  background:#2563eb;
+  color:#fff;
+}
+tr:nth-child(even){
+  background:#f8fafc;
+}
 
-table{width:100%;border-collapse:collapse}
-th,td{border:1px solid #ccc;padding:8px}
-th{background:#e0f2fe}
+.tab-btn{
+  background:#e5e7eb;
+  margin-right:5px;
+}
+.tab-btn.active{
+  background:#2563eb;
+  color:#fff;
+}
+
+.no-print{}
+
+@media(max-width:600px){
+  th,td{font-size:12px;padding:6px;}
+}
 </style>
 </head>
 
@@ -40,14 +95,13 @@ th{background:#e0f2fe}
 <!-- APP -->
 <div id="app" style="display:none">
 
-<!-- TAB -->
 <div class="card">
-<button onclick="showPage('stok')">📦 Stok</button>
-<button onclick="showPage('laporan')">📊 Laporan</button>
+<button class="tab-btn active" onclick="showPage('stok',event)">📦 Stok</button>
+<button class="tab-btn" onclick="showPage('laporan',event)">📊 Laporan</button>
 <button onclick="logout()" style="float:right">Logout</button>
 </div>
 
-<!-- ================== STOK ================== -->
+<!-- STOK -->
 <div id="pageStok">
 
 <div class="card">
@@ -91,11 +145,10 @@ th{background:#e0f2fe}
 </tr>
 </tfoot>
 </table>
-
 </div>
 </div>
 
-<!-- ================== LAPORAN ================== -->
+<!-- LAPORAN -->
 <div id="pageLaporan" style="display:none">
 
 <div class="card">
@@ -115,7 +168,6 @@ th{background:#e0f2fe}
 </div>
 
 </div>
-
 </div>
 </div>
 
@@ -125,7 +177,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyD3YTIsKwI6yTwabSwI97ZxG4B81GoQbis",
   authDomain: "gudang-app-8320e.firebaseapp.com",
   projectId: "gudang-app-8320e",
-  storageBucket: "gudang-app-8320e.firebasestorage.app",
+  storageBucket: "gudang-app-8320e.appspot.com",
   messagingSenderId: "1083922080078",
   appId: "1:1083922080078:web:59a37f73bf8ec33ffd7e1f"
 };
@@ -136,12 +188,20 @@ const db=firebase.firestore();
 
 let user=null,data=[],riwayat=[];
 
-// LOGIN
-function login(){auth.signInWithEmailAndPassword(email.value,password.value)}
-function register(){auth.createUserWithEmailAndPassword(email.value,password.value)}
+function login(){
+ let emailVal=email.value;
+ let passVal=password.value;
+ auth.signInWithEmailAndPassword(emailVal,passVal);
+}
+
+function register(){
+ let emailVal=email.value;
+ let passVal=password.value;
+ auth.createUserWithEmailAndPassword(emailVal,passVal);
+}
+
 function logout(){auth.signOut();}
 
-// AUTH
 auth.onAuthStateChanged(u=>{
  if(u){
   user=u;
@@ -154,7 +214,6 @@ auth.onAuthStateChanged(u=>{
  }
 });
 
-// LOAD
 function load(){
  db.collection("gudang").doc(user.uid).collection("stok")
  .onSnapshot(s=>{
@@ -171,13 +230,14 @@ function load(){
  });
 }
 
-// TAB
-function showPage(p){
- pageStok.style.display = p=="stok"?"block":"none";
- pageLaporan.style.display = p=="laporan"?"block":"none";
+function showPage(p,e){
+ pageStok.style.display=p=="stok"?"block":"none";
+ pageLaporan.style.display=p=="laporan"?"block":"none";
+
+ document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+ if(e) e.target.classList.add("active");
 }
 
-// AUTO
 function autoIsi(){
  let item=data.find(x=>x.id==kode.value);
  if(item){
@@ -187,14 +247,11 @@ function autoIsi(){
  }
 }
 
-// SIMPAN
 function simpan(jenis){
-
  let isiVal=parseInt(isi.value)||24;
  let jumlahVal=parseInt(jumlah.value)||0;
 
  let lama=data.find(x=>x.id==kode.value);
-
  let namaVal=nama.value.trim()||(lama?lama.nama:"");
  let hargaVal=parseInt(harga.value)||(lama?lama.harga:0);
 
@@ -203,24 +260,18 @@ function simpan(jenis){
  }
 
  let qty=satuan.value=="CRT"?jumlahVal*isiVal:jumlahVal;
-
  let ref=db.collection("gudang").doc(user.uid).collection("stok").doc(kode.value);
 
  db.runTransaction(async t=>{
   let doc=await t.get(ref);
   let stok=doc.exists?doc.data().stok:0;
-
   let baru=jenis=="masuk"?stok+qty:stok-qty;
   if(baru<0){alert("Stok kurang");return;}
 
   t.set(ref,{nama:namaVal,stok:baru,harga:hargaVal,isi:isiVal});
 
   db.collection("gudang").doc(user.uid).collection("riwayat").add({
-   kode:kode.value,
-   nama:namaVal,
-   jenis,
-   qty,
-   isi:isiVal,
+   kode:kode.value,nama:namaVal,jenis,qty,isi:isiVal,
    waktu:firebase.firestore.FieldValue.serverTimestamp()
   });
  });
@@ -228,24 +279,18 @@ function simpan(jenis){
  kode.value="";nama.value="";harga.value="";jumlah.value="";isi.value="";
 }
 
-// FORMAT
 function rp(x){return "Rp "+Math.round(x).toLocaleString("id-ID");}
 
-// RENDER STOK
 function render(){
-
  let key=cari.value.toLowerCase();
  let html="",total=0,no=1;
 
  data.filter(x=>!key||x.nama.toLowerCase().includes(key)||x.id.includes(key))
  .forEach(d=>{
-
   let isi=d.isi||24;
   let harga=d.harga||0;
-
   let crt=Math.floor(d.stok/isi);
   let pcs=d.stok%isi;
-
   let nilai=d.stok*(harga/isi);
   total+=nilai;
 
@@ -265,63 +310,48 @@ function render(){
  totalHarga.innerText=rp(total);
 }
 
-// HAPUS
 function hapusDipilih(){
- let cek=document.querySelectorAll("#list input:checked");
- cek.forEach(c=>{
+ document.querySelectorAll("#list input:checked").forEach(c=>{
   db.collection("gudang").doc(user.uid)
   .collection("stok").doc(c.value).delete();
  });
 }
 
-// PRINT TANPA CHECKBOX
 function printStok(){
-
- let clone = document.getElementById("tabelStok").cloneNode(true);
-
+ let clone=tabelStok.cloneNode(true);
  clone.querySelectorAll(".no-print").forEach(el=>el.remove());
-
  let w=window.open("");
- w.document.write("<h3>Data Stok</h3>");
- w.document.write(clone.outerHTML);
+ w.document.write("<h3>Data Stok</h3>"+clone.outerHTML);
  w.print();
 }
 
-// ================= LAPORAN =================
 function renderLaporan(){
-
  let jenisFilter=filterJenis.value;
  let tglFilter=filterTanggal.value;
-
  let map={};
 
  riwayat.forEach(x=>{
-
   let waktu=x.waktu?.toDate?x.waktu.toDate():new Date(x.waktu);
 
   if(jenisFilter=="hari"){
-    let today=new Date(); today.setHours(0,0,0,0);
-    if(waktu<today)return;
+    let t=new Date();t.setHours(0,0,0,0);
+    if(waktu<t)return;
   }
 
   if(tglFilter){
-    let tgl=new Date(tglFilter);
-    if(waktu.toDateString()!=tgl.toDateString()) return;
+    let t=new Date(tglFilter);
+    if(waktu.toDateString()!=t.toDateString())return;
   }
 
   let key=x.kode+"_"+x.nama;
 
-  if(!map[key]){
-    map[key]={nama:x.nama,kode:x.kode,masuk:0,keluar:0,isi:x.isi||24};
-  }
+  if(!map[key]) map[key]={nama:x.nama,kode:x.kode,masuk:0,keluar:0,isi:x.isi||24};
 
   if(x.jenis=="masuk") map[key].masuk+=x.qty;
   else map[key].keluar+=x.qty;
-
  });
 
  let html="";
-
  Object.values(map).forEach(d=>{
   let m=Math.floor(d.masuk/d.isi),mp=d.masuk%d.isi;
   let k=Math.floor(d.keluar/d.isi),kp=d.keluar%d.isi;
