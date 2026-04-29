@@ -9,81 +9,25 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
 <style>
-body{
-  font-family:'Segoe UI',sans-serif;
-  background:#eef2f7;
-  margin:0;
-}
-.container{
-  max-width:1000px;
-  margin:auto;
-  padding:15px;
-}
-.card{
-  background:#fff;
-  padding:15px;
-  margin-bottom:15px;
-  border-radius:12px;
-  box-shadow:0 4px 12px rgba(0,0,0,0.05);
-}
-button{
-  padding:10px 14px;
-  border:none;
-  border-radius:8px;
-  cursor:pointer;
-  font-weight:600;
-}
-.btn{background:#2563eb;color:#fff;}
-.btn:hover{background:#1e40af;}
-.btn-red{background:#dc2626;color:#fff;}
-.btn-red:hover{background:#991b1b;}
-
-input,select{
-  padding:10px;
-  margin:6px 0;
-  border:1px solid #ddd;
-  border-radius:8px;
-  width:100%;
-}
-
-table{
-  width:100%;
-  border-collapse:collapse;
-  margin-top:10px;
-}
-th,td{
-  padding:10px;
-  text-align:center;
-}
-th{
-  background:#2563eb;
-  color:#fff;
-}
-tr:nth-child(even){
-  background:#f8fafc;
-}
-
-.tab-btn{
-  background:#e5e7eb;
-  margin-right:5px;
-}
-.tab-btn.active{
-  background:#2563eb;
-  color:#fff;
-}
-
-.no-print{}
-
-@media(max-width:600px){
-  th,td{font-size:12px;padding:6px;}
-}
+body{font-family:'Segoe UI',sans-serif;background:#eef2f7;margin:0}
+.container{max-width:1000px;margin:auto;padding:15px}
+.card{background:#fff;padding:15px;margin-bottom:15px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.05)}
+button{padding:10px 14px;border:none;border-radius:8px;cursor:pointer;font-weight:600}
+.btn{background:#2563eb;color:#fff}
+.btn-red{background:#dc2626;color:#fff}
+input,select{padding:10px;margin:6px 0;border:1px solid #ddd;border-radius:8px;width:100%}
+table{width:100%;border-collapse:collapse;margin-top:10px}
+th,td{padding:10px;text-align:center}
+th{background:#2563eb;color:#fff}
+tr:nth-child(even){background:#f8fafc}
+.tab-btn{background:#e5e7eb;margin-right:5px}
+.tab-btn.active{background:#2563eb;color:#fff}
 </style>
 </head>
 
 <body>
 <div class="container">
 
-<!-- LOGIN -->
 <div id="loginBox" class="card">
 <h3>Login</h3>
 <input id="email" placeholder="Email">
@@ -92,7 +36,6 @@ tr:nth-child(even){
 <button onclick="register()">Daftar</button>
 </div>
 
-<!-- APP -->
 <div id="app" style="display:none">
 
 <div class="card">
@@ -101,18 +44,15 @@ tr:nth-child(even){
 <button onclick="logout()" style="float:right">Logout</button>
 </div>
 
-<!-- STOK -->
 <div id="pageStok">
 
 <div class="card">
 <h3>Input Barang</h3>
-
 <input id="kode" placeholder="Kode" oninput="autoIsi()">
 <input id="nama" placeholder="Nama">
 <input id="harga" placeholder="Harga/CRT">
 <input id="isi" placeholder="Isi/CRT">
 <input id="jumlah" placeholder="Jumlah">
-
 <select id="satuan">
 <option value="PCS">PCS</option>
 <option value="CRT">CRT</option>
@@ -128,19 +68,19 @@ tr:nth-child(even){
 <input id="cari" placeholder="Cari..." oninput="render()">
 
 <button onclick="printStok()">Print</button>
-<button class="btn-red" onclick="hapusDipilih()">Hapus</button>
+<button class="btn-red" onclick="hapusDipilih()">Nonaktifkan</button>
 
 <table id="tabelStok">
 <thead>
 <tr>
-<th class="no-print"></th>
-<th>No</th><th>Kode</th><th>Nama</th><th>Stok</th><th>Harga</th><th>Nilai</th>
+<th></th>
+<th>No</th><th>Kode</th><th>Nama</th><th>Stok</th><th>Harga</th><th>Nilai</th><th>Aksi</th> <!-- NEW -->
 </tr>
 </thead>
 <tbody id="list"></tbody>
 <tfoot>
 <tr>
-<td colspan="6">Total</td>
+<td colspan="7">Total</td>
 <td id="totalHarga">Rp 0</td>
 </tr>
 </tfoot>
@@ -148,26 +88,13 @@ tr:nth-child(even){
 </div>
 </div>
 
-<!-- LAPORAN -->
 <div id="pageLaporan" style="display:none">
-
-<div class="card">
-<h3>Filter Laporan</h3>
-
-<select id="filterJenis" onchange="renderLaporan()">
-<option value="hari">Hari Ini</option>
-<option value="semua">Semua</option>
-</select>
-
-<input type="date" id="filterTanggal" onchange="renderLaporan()">
-</div>
-
 <div class="card">
 <h3>Laporan</h3>
 <div id="laporan"></div>
 </div>
-
 </div>
+
 </div>
 </div>
 
@@ -189,17 +116,11 @@ const db=firebase.firestore();
 let user=null,data=[],riwayat=[];
 
 function login(){
- let emailVal=email.value;
- let passVal=password.value;
- auth.signInWithEmailAndPassword(emailVal,passVal);
+ auth.signInWithEmailAndPassword(email.value,password.value);
 }
-
 function register(){
- let emailVal=email.value;
- let passVal=password.value;
- auth.createUserWithEmailAndPassword(emailVal,passVal);
+ auth.createUserWithEmailAndPassword(email.value,password.value);
 }
-
 function logout(){auth.signOut();}
 
 auth.onAuthStateChanged(u=>{
@@ -221,21 +142,11 @@ function load(){
   s.forEach(d=>data.push({...d.data(),id:d.id}));
   render();
  });
-
- db.collection("gudang").doc(user.uid).collection("riwayat")
- .onSnapshot(s=>{
-  riwayat=[];
-  s.forEach(d=>riwayat.push(d.data()));
-  renderLaporan();
- });
 }
 
 function showPage(p,e){
  pageStok.style.display=p=="stok"?"block":"none";
  pageLaporan.style.display=p=="laporan"?"block":"none";
-
- document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
- if(e) e.target.classList.add("active");
 }
 
 function autoIsi(){
@@ -247,6 +158,7 @@ function autoIsi(){
  }
 }
 
+// SIMPAN (update + aktif kembali)
 function simpan(jenis){
  let isiVal=parseInt(isi.value)||24;
  let jumlahVal=parseInt(jumlah.value)||0;
@@ -266,13 +178,15 @@ function simpan(jenis){
   let doc=await t.get(ref);
   let stok=doc.exists?doc.data().stok:0;
   let baru=jenis=="masuk"?stok+qty:stok-qty;
+
   if(baru<0){alert("Stok kurang");return;}
 
-  t.set(ref,{nama:namaVal,stok:baru,harga:hargaVal,isi:isiVal});
-
-  db.collection("gudang").doc(user.uid).collection("riwayat").add({
-   kode:kode.value,nama:namaVal,jenis,qty,isi:isiVal,
-   waktu:firebase.firestore.FieldValue.serverTimestamp()
+  t.set(ref,{
+    nama:namaVal,
+    stok:baru,
+    harga:hargaVal,
+    isi:isiVal,
+    aktif:true // NEW
   });
  });
 
@@ -281,11 +195,14 @@ function simpan(jenis){
 
 function rp(x){return "Rp "+Math.round(x).toLocaleString("id-ID");}
 
+// RENDER + FILTER AKTIF + EDIT BUTTON
 function render(){
  let key=cari.value.toLowerCase();
  let html="",total=0,no=1;
 
- data.filter(x=>!key||x.nama.toLowerCase().includes(key)||x.id.includes(key))
+ data.filter(x=> (x.aktif!==false) &&
+ (!key || x.nama.toLowerCase().includes(key) || x.id.includes(key))
+ )
  .forEach(d=>{
   let isi=d.isi||24;
   let harga=d.harga||0;
@@ -296,13 +213,14 @@ function render(){
 
   html+=`
   <tr>
-  <td class="no-print"><input type="checkbox" value="${d.id}"></td>
+  <td><input type="checkbox" value="${d.id}"></td>
   <td>${no++}</td>
   <td>${d.id}</td>
   <td>${d.nama}</td>
   <td>${crt} crt + ${pcs} pcs</td>
   <td>${rp(harga)}</td>
   <td>${rp(nilai)}</td>
+  <td><button onclick="editBarang('${d.id}')">Edit</button></td>
   </tr>`;
  });
 
@@ -310,61 +228,31 @@ function render(){
  totalHarga.innerText=rp(total);
 }
 
+// EDIT
+function editBarang(id){
+ let item=data.find(x=>x.id==id);
+ if(item){
+  kode.value=item.id;
+  nama.value=item.nama;
+  harga.value=item.harga;
+  isi.value=item.isi;
+ }
+}
+
+// SOFT DELETE
 function hapusDipilih(){
  document.querySelectorAll("#list input:checked").forEach(c=>{
   db.collection("gudang").doc(user.uid)
-  .collection("stok").doc(c.value).delete();
+  .collection("stok").doc(c.value)
+  .update({aktif:false});
  });
 }
 
 function printStok(){
  let clone=tabelStok.cloneNode(true);
- clone.querySelectorAll(".no-print").forEach(el=>el.remove());
  let w=window.open("");
  w.document.write("<h3>Data Stok</h3>"+clone.outerHTML);
  w.print();
-}
-
-function renderLaporan(){
- let jenisFilter=filterJenis.value;
- let tglFilter=filterTanggal.value;
- let map={};
-
- riwayat.forEach(x=>{
-  let waktu=x.waktu?.toDate?x.waktu.toDate():new Date(x.waktu);
-
-  if(jenisFilter=="hari"){
-    let t=new Date();t.setHours(0,0,0,0);
-    if(waktu<t)return;
-  }
-
-  if(tglFilter){
-    let t=new Date(tglFilter);
-    if(waktu.toDateString()!=t.toDateString())return;
-  }
-
-  let key=x.kode+"_"+x.nama;
-
-  if(!map[key]) map[key]={nama:x.nama,kode:x.kode,masuk:0,keluar:0,isi:x.isi||24};
-
-  if(x.jenis=="masuk") map[key].masuk+=x.qty;
-  else map[key].keluar+=x.qty;
- });
-
- let html="";
- Object.values(map).forEach(d=>{
-  let m=Math.floor(d.masuk/d.isi),mp=d.masuk%d.isi;
-  let k=Math.floor(d.keluar/d.isi),kp=d.keluar%d.isi;
-
-  html+=`
-  <div style="border-bottom:1px solid #ddd;padding:8px">
-  <b>${d.nama}</b> (${d.kode})<br>
-  Masuk: ${m} crt + ${mp} pcs<br>
-  Keluar: ${k} crt + ${kp} pcs
-  </div>`;
- });
-
- laporan.innerHTML=html||"Tidak ada data";
 }
 
 </script>
