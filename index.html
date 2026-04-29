@@ -12,7 +12,7 @@
 body{font-family:'Segoe UI',sans-serif;background:#eef2f7;margin:0}
 .container{max-width:1000px;margin:auto;padding:15px}
 .card{background:#fff;padding:15px;margin-bottom:15px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.05)}
-button{padding:10px 14px;border:none;border-radius:8px;cursor:pointer;font-weight:600}
+button{padding:10px;border:none;border-radius:8px;cursor:pointer;font-weight:600}
 .btn{background:#2563eb;color:#fff}
 .btn-red{background:#dc2626;color:#fff}
 input,select{padding:10px;margin:6px 0;border:1px solid #ddd;border-radius:8px;width:100%}
@@ -20,8 +20,6 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
 th,td{padding:10px;text-align:center}
 th{background:#2563eb;color:#fff}
 tr:nth-child(even){background:#f8fafc}
-.tab-btn{background:#e5e7eb;margin-right:5px}
-.tab-btn.active{background:#2563eb;color:#fff}
 </style>
 </head>
 
@@ -39,8 +37,8 @@ tr:nth-child(even){background:#f8fafc}
 <div id="app" style="display:none">
 
 <div class="card">
-<button class="tab-btn active" onclick="showPage('stok',event)">📦 Stok</button>
-<button class="tab-btn" onclick="showPage('laporan',event)">📊 Laporan</button>
+<button onclick="showPage('stok')">📦 Stok</button>
+<button onclick="showPage('laporan')">📊 Laporan</button>
 <button onclick="logout()" style="float:right">Logout</button>
 </div>
 
@@ -53,6 +51,7 @@ tr:nth-child(even){background:#f8fafc}
 <input id="harga" placeholder="Harga/CRT">
 <input id="isi" placeholder="Isi/CRT">
 <input id="jumlah" placeholder="Jumlah">
+
 <select id="satuan">
 <option value="PCS">PCS</option>
 <option value="CRT">CRT</option>
@@ -74,7 +73,7 @@ tr:nth-child(even){background:#f8fafc}
 <thead>
 <tr>
 <th></th>
-<th>No</th><th>Kode</th><th>Nama</th><th>Stok</th><th>Harga</th><th>Nilai</th><th>Aksi</th> <!-- NEW -->
+<th>No</th><th>Kode</th><th>Nama</th><th>Stok</th><th>Harga</th><th>Nilai</th><th>Aksi</th>
 </tr>
 </thead>
 <tbody id="list"></tbody>
@@ -113,7 +112,7 @@ firebase.initializeApp(firebaseConfig);
 const auth=firebase.auth();
 const db=firebase.firestore();
 
-let user=null,data=[],riwayat=[];
+let user=null,data=[];
 
 function login(){
  auth.signInWithEmailAndPassword(email.value,password.value);
@@ -144,13 +143,13 @@ function load(){
  });
 }
 
-function showPage(p,e){
+function showPage(p){
  pageStok.style.display=p=="stok"?"block":"none";
  pageLaporan.style.display=p=="laporan"?"block":"none";
 }
 
 function autoIsi(){
- let item=data.find(x=>x.id==kode.value);
+ let item=data.find(x=>String(x.id)===String(kode.value));
  if(item){
   nama.value=item.nama;
   harga.value=item.harga;
@@ -158,7 +157,7 @@ function autoIsi(){
  }
 }
 
-// SIMPAN (update + aktif kembali)
+// SIMPAN
 function simpan(jenis){
  let isiVal=parseInt(isi.value)||24;
  let jumlahVal=parseInt(jumlah.value)||0;
@@ -186,7 +185,7 @@ function simpan(jenis){
     stok:baru,
     harga:hargaVal,
     isi:isiVal,
-    aktif:true // NEW
+    aktif:true
   });
  });
 
@@ -195,7 +194,7 @@ function simpan(jenis){
 
 function rp(x){return "Rp "+Math.round(x).toLocaleString("id-ID");}
 
-// RENDER + FILTER AKTIF + EDIT BUTTON
+// RENDER
 function render(){
  let key=cari.value.toLowerCase();
  let html="",total=0,no=1;
@@ -228,16 +227,24 @@ function render(){
  totalHarga.innerText=rp(total);
 }
 
-// EDIT
+// EDIT (FIX GLOBAL)
 function editBarang(id){
- let item=data.find(x=>x.id==id);
- if(item){
-  kode.value=item.id;
-  nama.value=item.nama;
-  harga.value=item.harga;
-  isi.value=item.isi;
+ console.log("Edit:",id);
+ let item=data.find(x=>String(x.id)===String(id));
+
+ if(!item){
+  alert("Data tidak ditemukan");
+  return;
  }
+
+ kode.value=item.id||"";
+ nama.value=item.nama||"";
+ harga.value=item.harga||"";
+ isi.value=item.isi||"";
 }
+
+// WAJIB AGAR ONCLICK JALAN
+window.editBarang = editBarang;
 
 // SOFT DELETE
 function hapusDipilih(){
