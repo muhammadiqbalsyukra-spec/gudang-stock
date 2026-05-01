@@ -1,80 +1,46 @@
-<!DOCTYPE html>
-<html lang="id">
+<!DOCTYPE html><html lang="id">
 <head>
 <meta charset="UTF-8">
-<title>Stok Gudang</title>
-
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-
-<style>
+<title>Stok Gudang</title><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script><style>
 body{font-family:'Segoe UI',sans-serif;background:#eef2f7;margin:0}
 .container{max-width:1000px;margin:auto;padding:15px}
 .card{background:#fff;padding:15px;margin-bottom:15px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.05)}
 button{padding:10px;border:none;border-radius:8px;cursor:pointer;font-weight:600}
 .btn{background:#2563eb;color:#fff}
 .btn-red{background:#dc2626;color:#fff}
-
-input,select{
-  padding:10px;
-  margin:6px 0;
-  border:1px solid #ddd;
-  border-radius:8px;
-  width:100%;
-}
-
+input,select{padding:10px;margin:6px 0;border:1px solid #ddd;border-radius:8px;width:100%}
 table{width:100%;border-collapse:collapse;margin-top:10px;}
 th,td{border:1px solid #ddd;padding:10px;text-align:center;}
 th{background:#2563eb;color:#fff;}
-</style>
-</head>
-
-<body>
-<div class="container">
-
-<div id="loginBox" class="card">
+</style></head><body>
+<div class="container"><!-- LOGIN --><div id="loginBox" class="card">
 <h3>Login</h3>
 <input id="email" placeholder="Email">
-<input id="password" type="password">
+<input id="password" type="password" placeholder="Password">
 <button class="btn" onclick="login()">Login</button>
 <button onclick="register()">Daftar</button>
-</div>
-
-<div id="app" style="display:none">
-
-<div class="card">
+</div><!-- APP --><div id="app" style="display:none"><div class="card">
 <button onclick="showPage('stok')">📦 Stok</button>
 <button onclick="showPage('laporan')">📊 Laporan</button>
 <button onclick="logout()" style="float:right">Logout</button>
-</div>
-
-<!-- STOK -->
-<div id="pageStok">
+</div><!-- STOK --><div id="pageStok">
 <div class="card">
 <h3>Input Barang</h3>
 <input id="kode" placeholder="Kode" oninput="autoIsi()">
 <input id="nama" placeholder="Nama">
 <input id="harga" placeholder="Harga per CRT">
 <input id="isi" placeholder="Isi/CRT">
-<input id="jumlah" placeholder="Jumlah">
-
-<select id="satuan">
+<input id="jumlah" placeholder="Jumlah"><select id="satuan">
 <option value="PCS">PCS</option>
 <option value="CRT">CRT</option>
-</select>
-
-<button class="btn" onclick="simpan('masuk')">Masuk</button>
+</select><button class="btn" onclick="simpan('masuk')">Masuk</button>
 <button class="btn-red" onclick="simpan('keluar')">Keluar</button>
-</div>
 
-<div class="card">
+</div><div class="card">
 <h3>Stok</h3>
 <input id="cari" placeholder="Cari..." oninput="render()">
 <button onclick="printStok()">Print</button>
-<button class="btn-red" onclick="hapusDipilih()">Nonaktifkan</button>
-
-<table>
+<button class="btn-red" onclick="hapusDipilih()">Nonaktifkan</button><table>
 <thead>
 <tr>
 <th></th><th>No</th><th>Kode</th><th>Nama</th><th>Stok</th><th>Harga</th><th>Nilai</th>
@@ -86,23 +52,16 @@ th{background:#2563eb;color:#fff;}
 </tfoot>
 </table>
 </div>
-</div>
-
-<!-- LAPORAN -->
-<div id="pageLaporan" style="display:none">
+</div><!-- LAPORAN --><div id="pageLaporan" style="display:none">
 <div class="card">
 <h3>Laporan</h3>
 <input type="date" id="filterTanggal" onchange="loadLaporan()">
 <div id="laporan"></div>
 </div>
-</div>
+</div></div>
+</div><script>
 
-</div>
-</div>
-
-<script>
-
-// FIREBASE
+// 🔥 FIREBASE CONFIG
 const firebaseConfig = {
   apiKey: "AIzaSyD3YTIsKwI6yTwabSwI97ZxG4B81GoQbis",
   authDomain: "gudang-app-8320e.firebaseapp.com",
@@ -111,24 +70,43 @@ const firebaseConfig = {
   messagingSenderId: "1083922080078",
   appId: "1:1083922080078:web:59a37f73bf8ec33ffd7e1f"
 };
+
 firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
 
-const auth=firebase.auth();
-const db=firebase.firestore();
-
-let user=null,data=[],loading=false,unsubLaporan=null;
+let user = null;
+let data = [];
+let loading = false;
+let unsubLaporan = null;
 
 // AUTH
-function login(){auth.signInWithEmailAndPassword(email.value,password.value);}
-function register(){auth.createUserWithEmailAndPassword(email.value,password.value);}
-function logout(){auth.signOut();}
+function login(){
+ if(!email.value || !password.value) return alert("Isi email & password");
+ auth.signInWithEmailAndPassword(email.value,password.value);
+}
 
+function register(){
+ if(!email.value || !password.value) return alert("Isi email & password");
+ auth.createUserWithEmailAndPassword(email.value,password.value);
+}
+
+function logout(){ auth.signOut(); }
+
+// SESSION
 auth.onAuthStateChanged(u=>{
- if(u){user=u;loginBox.style.display="none";app.style.display="block";load();}
- else{loginBox.style.display="block";app.style.display="none";}
+ if(u){
+  user = u;
+  loginBox.style.display="none";
+  app.style.display="block";
+  load();
+ }else{
+  loginBox.style.display="block";
+  app.style.display="none";
+ }
 });
 
-// LOAD
+// LOAD DATA
 function load(){
  db.collection("gudang").doc(user.uid).collection("stok")
  .onSnapshot(s=>{
@@ -138,7 +116,7 @@ function load(){
  });
 }
 
-// NAV
+// NAVIGASI
 function showPage(p){
  pageStok.style.display=p=="stok"?"block":"none";
  pageLaporan.style.display=p=="laporan"?"block":"none";
@@ -151,18 +129,17 @@ function rp(x){return "Rp "+Math.round(x).toLocaleString("id-ID");}
 
 // AUTO ISI
 function autoIsi(){
- let kodeVal=kode.value.trim().toUpperCase();
- let item=data.find(x=>x.id===kodeVal);
+ let item=data.find(x=>x.id===kode.value.trim().toUpperCase());
  if(item){
   nama.value=item.nama;
   harga.value=item.harga;
   isi.value=item.isi;
-  jumlah.focus();
  }
 }
 
 // SIMPAN
 async function simpan(jenis){
+
  if(loading) return;
  loading=true;
 
@@ -170,15 +147,19 @@ async function simpan(jenis){
  let isiVal=toNumber(isi.value)||24;
  let jumlahVal=toNumber(jumlah.value);
 
- let lama=data.find(x=>x.id===kodeVal);
- let namaVal=nama.value.trim()||(lama?lama.nama:"");
- let hargaVal=toNumber(harga.value)||(lama?lama.harga:0);
-
- if(!kodeVal||!namaVal||hargaVal<=0||jumlahVal<=0){
-  alert("Data tidak valid"); loading=false; return;
+ if(!kodeVal || jumlahVal<=0){
+  alert("Data tidak valid");
+  loading=false;
+  return;
  }
 
+ let lama=data.find(x=>x.id===kodeVal);
+
+ let namaVal=nama.value.trim() || (lama?lama.nama:"");
+ let hargaVal=toNumber(harga.value) || (lama?lama.harga:0);
+
  let qty=satuan.value=="CRT"?jumlahVal*isiVal:jumlahVal;
+
  let ref=db.collection("gudang").doc(user.uid).collection("stok").doc(kodeVal);
 
  try{
@@ -186,43 +167,52 @@ async function simpan(jenis){
   let doc=await t.get(ref);
   let stok=doc.exists?doc.data().stok:0;
   let baru=jenis=="masuk"?stok+qty:stok-qty;
+
   if(baru<0) throw "Stok tidak cukup";
 
-  t.set(ref,{nama:namaVal,stok:baru,harga:hargaVal,isi:isiVal,aktif:true});
+  t.set(ref,{
+    nama:namaVal,
+    stok:baru,
+    harga:hargaVal,
+    isi:isiVal,
+    aktif:true
+  });
  });
 
- // 🔥 LAPORAN + ISI
  await db.collection("gudang").doc(user.uid)
  .collection("laporan")
  .add({
-   kode:kodeVal,
-   nama:namaVal,
-   jenis:jenis,
-   jumlah:qty,
-   isi:isiVal,
-   tanggal:new Date().toLocaleDateString("id-ID"),
-   waktu:new Date()
+  kode:kodeVal,
+  nama:namaVal,
+  jenis:jenis,
+  jumlah:qty,
+  isi:isiVal,
+  tanggal:new Date().toLocaleDateString("id-ID"),
+  waktu:new Date()
  });
 
  kode.value="";nama.value="";harga.value="";jumlah.value="";isi.value="";
 
- }catch(e){alert(e);}
+ }catch(e){alert(e)}
+
  loading=false;
 }
 
-// RENDER STOK
+// RENDER
 function render(){
+
  let key=cari.value.toLowerCase();
  let html="",total=0,no=1;
 
  data.filter(x=>x.aktif!==false && x.stok>0 &&
- (!key || x.nama.toLowerCase().includes(key) || x.id.includes(key))
- )
+ (!key || x.nama.toLowerCase().includes(key) || x.id.includes(key)))
  .forEach(d=>{
+
   let isi=d.isi||24;
   let crt=Math.floor(d.stok/isi);
   let pcs=d.stok%isi;
   let nilai=d.stok*(d.harga/isi);
+
   total+=nilai;
 
   html+=`
@@ -243,7 +233,8 @@ function render(){
 
 // HAPUS
 function hapusDipilih(){
- if(!confirm("Yakin nonaktifkan barang?")) return;
+ if(!confirm("Yakin?")) return;
+
  document.querySelectorAll("#list input:checked").forEach(c=>{
   db.collection("gudang").doc(user.uid)
   .collection("stok").doc(c.value)
@@ -251,24 +242,24 @@ function hapusDipilih(){
  });
 }
 
-// LAPORAN CRT + PCS
+// LAPORAN
 function loadLaporan(){
 
  if(unsubLaporan) unsubLaporan();
 
  let tgl=filterTanggal.value;
 
- let ref=db.collection("gudang")
+ unsubLaporan=db.collection("gudang")
  .doc(user.uid)
  .collection("laporan")
- .orderBy("waktu","desc");
-
- unsubLaporan=ref.onSnapshot(s=>{
+ .orderBy("waktu","desc")
+ .onSnapshot(s=>{
 
  let html="<table><tr><th>Tanggal</th><th>Kode</th><th>Nama</th><th>Jenis</th><th>Jumlah</th></tr>";
 
  s.forEach(d=>{
   let x=d.data();
+
   if(tgl && x.tanggal!==tgl) return;
 
   let isi=x.isi||24;
@@ -292,6 +283,7 @@ function loadLaporan(){
 
 // PRINT
 function printStok(){
+
  let rows=data.filter(x=>x.aktif!==false && x.stok>0)
  .map((d,i)=>{
   let isi=d.isi||24;
@@ -311,13 +303,12 @@ function printStok(){
 
  let w=window.open("");
  w.document.write(`<h3>Data Stok</h3>
- <table border="1"><tr>
- <th>No</th><th>Kode</th><th>Nama</th><th>Stok</th><th>Harga</th><th>Nilai</th>
- </tr>${rows}</table>`);
+ <table border="1">
+ <tr><th>No</th><th>Kode</th><th>Nama</th><th>Stok</th><th>Harga</th><th>Nilai</th></tr>
+ ${rows}</table>`);
+
  w.print();
 }
 
-</script>
-
-</body>
+</script></body>
 </html>
