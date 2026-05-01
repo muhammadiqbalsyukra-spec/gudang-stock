@@ -24,18 +24,9 @@ input,select{
   width:100%;
 }
 
-table{
-  width:100%;
-  border-collapse:collapse;
-  margin-top:10px;
-}
-th,td{
-  border:1px solid #ddd;
-  padding:10px;
-  text-align:center;
-}
+table{width:100%;border-collapse:collapse;margin-top:10px;}
+th,td{border:1px solid #ddd;padding:10px;text-align:center;}
 th{background:#2563eb;color:#fff;}
-tr:hover{background:#f1f5f9;}
 </style>
 </head>
 
@@ -58,9 +49,8 @@ tr:hover{background:#f1f5f9;}
 <button onclick="logout()" style="float:right">Logout</button>
 </div>
 
-<!-- ================= STOK ================= -->
+<!-- STOK -->
 <div id="pageStok">
-
 <div class="card">
 <h3>Input Barang</h3>
 <input id="kode" placeholder="Kode" oninput="autoIsi()">
@@ -80,31 +70,25 @@ tr:hover{background:#f1f5f9;}
 
 <div class="card">
 <h3>Stok</h3>
-
 <input id="cari" placeholder="Cari..." oninput="render()">
-
 <button onclick="printStok()">Print</button>
-<button class="btn-red" onclick="hapusDipilih()">Hapus</button>
+<button class="btn-red" onclick="hapusDipilih()">Nonaktifkan</button>
 
 <table>
 <thead>
 <tr>
-<th></th>
-<th>No</th><th>Kode</th><th>Nama</th><th>Stok</th><th>Harga</th><th>Nilai</th>
+<th></th><th>No</th><th>Kode</th><th>Nama</th><th>Stok</th><th>Harga</th><th>Nilai</th>
 </tr>
 </thead>
 <tbody id="list"></tbody>
 <tfoot>
-<tr>
-<td colspan="6">Total</td>
-<td id="totalHarga">Rp 0</td>
-</tr>
+<tr><td colspan="6">Total</td><td id="totalHarga">Rp 0</td></tr>
 </tfoot>
 </table>
 </div>
 </div>
 
-<!-- ================= LAPORAN ================= -->
+<!-- LAPORAN -->
 <div id="pageLaporan" style="display:none">
 <div class="card">
 <h3>Laporan</h3>
@@ -118,7 +102,7 @@ tr:hover{background:#f1f5f9;}
 
 <script>
 
-// ================= FIREBASE =================
+// FIREBASE
 const firebaseConfig = {
   apiKey: "AIzaSyD3YTIsKwI6yTwabSwI97ZxG4B81GoQbis",
   authDomain: "gudang-app-8320e.firebaseapp.com",
@@ -132,29 +116,19 @@ firebase.initializeApp(firebaseConfig);
 const auth=firebase.auth();
 const db=firebase.firestore();
 
-// ================= GLOBAL =================
-let user=null,data=[];
-let unsubLaporan=null;
-let loading=false;
+let user=null,data=[],loading=false,unsubLaporan=null;
 
-// ================= AUTH =================
+// AUTH
 function login(){auth.signInWithEmailAndPassword(email.value,password.value);}
 function register(){auth.createUserWithEmailAndPassword(email.value,password.value);}
 function logout(){auth.signOut();}
 
 auth.onAuthStateChanged(u=>{
- if(u){
-  user=u;
-  loginBox.style.display="none";
-  app.style.display="block";
-  load();
- }else{
-  loginBox.style.display="block";
-  app.style.display="none";
- }
+ if(u){user=u;loginBox.style.display="none";app.style.display="block";load();}
+ else{loginBox.style.display="block";app.style.display="none";}
 });
 
-// ================= LOAD =================
+// LOAD
 function load(){
  db.collection("gudang").doc(user.uid).collection("stok")
  .onSnapshot(s=>{
@@ -164,79 +138,60 @@ function load(){
  });
 }
 
-// ================= NAV =================
+// NAV
 function showPage(p){
  pageStok.style.display=p=="stok"?"block":"none";
  pageLaporan.style.display=p=="laporan"?"block":"none";
  if(p=="laporan") loadLaporan();
 }
 
-// ================= UTIL =================
-function toNumber(val){ return parseInt(val) || 0; }
+// UTIL
+function toNumber(v){return parseInt(v)||0;}
 function rp(x){return "Rp "+Math.round(x).toLocaleString("id-ID");}
 
-// ================= AUTO ISI =================
+// AUTO ISI
 function autoIsi(){
- let kodeVal = kode.value.trim().toUpperCase();
+ let kodeVal=kode.value.trim().toUpperCase();
  let item=data.find(x=>x.id===kodeVal);
  if(item){
   nama.value=item.nama;
   harga.value=item.harga;
   isi.value=item.isi;
+  jumlah.focus();
  }
 }
 
-// ================= RESET =================
-function resetForm(){
- kode.value="";
- nama.value="";
- harga.value="";
- jumlah.value="";
- isi.value="";
-}
-
-// ================= SIMPAN =================
+// SIMPAN
 async function simpan(jenis){
-
  if(loading) return;
- loading = true;
+ loading=true;
 
- let kodeVal = kode.value.trim().toUpperCase();
- let isiVal = toNumber(isi.value)||24;
- let jumlahVal = toNumber(jumlah.value);
+ let kodeVal=kode.value.trim().toUpperCase();
+ let isiVal=toNumber(isi.value)||24;
+ let jumlahVal=toNumber(jumlah.value);
 
  let lama=data.find(x=>x.id===kodeVal);
  let namaVal=nama.value.trim()||(lama?lama.nama:"");
  let hargaVal=toNumber(harga.value)||(lama?lama.harga:0);
 
- if(!kodeVal || !namaVal || hargaVal<=0 || jumlahVal<=0){
-  alert("Data tidak valid");
-  loading=false;
-  return;
+ if(!kodeVal||!namaVal||hargaVal<=0||jumlahVal<=0){
+  alert("Data tidak valid"); loading=false; return;
  }
 
- let qty = satuan.value=="CRT" ? jumlahVal*isiVal : jumlahVal;
-
+ let qty=satuan.value=="CRT"?jumlahVal*isiVal:jumlahVal;
  let ref=db.collection("gudang").doc(user.uid).collection("stok").doc(kodeVal);
 
  try{
  await db.runTransaction(async t=>{
   let doc=await t.get(ref);
   let stok=doc.exists?doc.data().stok:0;
-
-  let baru = jenis=="masuk" ? stok+qty : stok-qty;
-
+  let baru=jenis=="masuk"?stok+qty:stok-qty;
   if(baru<0) throw "Stok tidak cukup";
 
-  t.set(ref,{
-    nama:namaVal,
-    stok:baru,
-    harga:hargaVal,
-    isi:isiVal,
-    aktif:true
-  });
+  t.set(ref,{nama:namaVal,stok:baru,harga:hargaVal,isi:isiVal,aktif:true});
  });
 
+ // 🔥 LAPORAN + ISI
  await db.collection("gudang").doc(user.uid)
  .collection("laporan")
  .add({
@@ -244,35 +199,30 @@ async function simpan(jenis){
    nama:namaVal,
    jenis:jenis,
    jumlah:qty,
-   harga:hargaVal,
+   isi:isiVal,
    tanggal:new Date().toLocaleDateString("id-ID"),
    waktu:new Date()
  });
 
- resetForm();
+ kode.value="";nama.value="";harga.value="";jumlah.value="";isi.value="";
 
- }catch(e){
-  alert(e);
- }
-
+ }catch(e){alert(e);}
  loading=false;
 }
 
-// ================= RENDER =================
+// RENDER STOK
 function render(){
  let key=cari.value.toLowerCase();
  let html="",total=0,no=1;
 
- data.filter(x=>
-  x.aktif!==false &&
-  (!key || x.nama.toLowerCase().includes(key) || x.id.includes(key))
+ data.filter(x=>x.aktif!==false && x.stok>0 &&
+ (!key || x.nama.toLowerCase().includes(key) || x.id.includes(key))
  )
  .forEach(d=>{
   let isi=d.isi||24;
-  let harga=d.harga||0;
   let crt=Math.floor(d.stok/isi);
   let pcs=d.stok%isi;
-  let nilai=d.stok*(harga/isi);
+  let nilai=d.stok*(d.harga/isi);
   total+=nilai;
 
   html+=`
@@ -282,7 +232,7 @@ function render(){
   <td>${d.id}</td>
   <td>${d.nama}</td>
   <td>${crt} crt + ${pcs} pcs</td>
-  <td>${rp(harga)}</td>
+  <td>${rp(d.harga)}</td>
   <td>${rp(nilai)}</td>
   </tr>`;
  });
@@ -291,10 +241,9 @@ function render(){
  totalHarga.innerText=rp(total);
 }
 
-// ================= HAPUS =================
+// HAPUS
 function hapusDipilih(){
  if(!confirm("Yakin nonaktifkan barang?")) return;
-
  document.querySelectorAll("#list input:checked").forEach(c=>{
   db.collection("gudang").doc(user.uid)
   .collection("stok").doc(c.value)
@@ -302,19 +251,19 @@ function hapusDipilih(){
  });
 }
 
-// ================= LAPORAN =================
+// LAPORAN CRT + PCS
 function loadLaporan(){
 
  if(unsubLaporan) unsubLaporan();
 
- let tgl = filterTanggal.value;
+ let tgl=filterTanggal.value;
 
- let ref = db.collection("gudang")
+ let ref=db.collection("gudang")
  .doc(user.uid)
  .collection("laporan")
  .orderBy("waktu","desc");
 
- unsubLaporan = ref.onSnapshot(s=>{
+ unsubLaporan=ref.onSnapshot(s=>{
 
  let html="<table><tr><th>Tanggal</th><th>Kode</th><th>Nama</th><th>Jenis</th><th>Jumlah</th></tr>";
 
@@ -322,55 +271,49 @@ function loadLaporan(){
   let x=d.data();
   if(tgl && x.tanggal!==tgl) return;
 
+  let isi=x.isi||24;
+  let crt=Math.floor(x.jumlah/isi);
+  let pcs=x.jumlah%isi;
+
   html+=`
   <tr>
   <td>${x.tanggal}</td>
   <td>${x.kode}</td>
   <td>${x.nama}</td>
   <td>${x.jenis}</td>
-  <td>${x.jumlah}</td>
+  <td>${crt} crt + ${pcs} pcs</td>
   </tr>`;
  });
 
  html+="</table>";
  laporan.innerHTML=html;
-
  });
 }
 
-// ================= PRINT =================
+// PRINT
 function printStok(){
-
- let rows = data
- .filter(x=>x.aktif!==false)
+ let rows=data.filter(x=>x.aktif!==false && x.stok>0)
  .map((d,i)=>{
   let isi=d.isi||24;
   let crt=Math.floor(d.stok/isi);
   let pcs=d.stok%isi;
   let nilai=d.stok*(d.harga/isi);
 
-  return `
-  <tr>
-    <td>${i+1}</td>
-    <td>${d.id}</td>
-    <td>${d.nama}</td>
-    <td>${crt} crt + ${pcs} pcs</td>
-    <td>${rp(d.harga)}</td>
-    <td>${rp(nilai)}</td>
+  return `<tr>
+  <td>${i+1}</td>
+  <td>${d.id}</td>
+  <td>${d.nama}</td>
+  <td>${crt} crt + ${pcs} pcs</td>
+  <td>${rp(d.harga)}</td>
+  <td>${rp(nilai)}</td>
   </tr>`;
  }).join("");
 
- let html=`
- <h3>Data Stok</h3>
- <table border="1" cellspacing="0" cellpadding="8">
- <tr>
- <th>No</th><th>Kode</th><th>Nama</th><th>Stok</th><th>Harga</th><th>Nilai</th>
- </tr>
- ${rows}
- </table>`;
-
  let w=window.open("");
- w.document.write(html);
+ w.document.write(`<h3>Data Stok</h3>
+ <table border="1"><tr>
+ <th>No</th><th>Kode</th><th>Nama</th><th>Stok</th><th>Harga</th><th>Nilai</th>
+ </tr>${rows}</table>`);
  w.print();
 }
 
